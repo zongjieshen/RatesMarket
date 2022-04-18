@@ -11,6 +11,7 @@
     <OutputPath>.</OutputPath>
     <Name>PythonMarketAnalytics</Name>
     <RootNamespace>PythonMarketAnalytics</RootNamespace>
+    <InterpreterId>Global|ContinuumAnalytics|Anaconda38-64</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,7 +22,43 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Market\MarketAddin.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Market\YieldCurveFactory.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Market\Market.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Market\Dates.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Market\Instruments.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Market\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Market\YieldCurve.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Market\Pillars.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="setup.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="PythonMarketAnalytics.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda38-64" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Market\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Market\MarketAddin.xlsm" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
