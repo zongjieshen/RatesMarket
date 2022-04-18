@@ -1,26 +1,44 @@
 from Market.Pillars import *
 from Market.Instruments import *
+from Market.YieldCurveFactory import *
+import Market as mkt
 import scipy.interpolate
 import time
+import copy
 
 class Curve(object):
-    def __init__(self, key, ccy, valueDate, interpType, discount_curve):
+    def __init__(self, key, ccy, valueDate, discountCurve):
         self.key= key
         self.ccy = ccy
         self.valueDate = valueDate
-        self._interpType = interpType
-        self.discount_curve = discount_curve
+        self.discountCurve = discountCurve
         self._built = False
+        self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
+                                time.mktime(self.valueDate.timetuple()),
+                                np.log(1))],
+                              dtype=[('maturity', 'datetime64[D]'),
+                                     ('timestamp', np.float64),
+                                     ('discount_factor', np.float64)])
 
-    def discount_factor(self, date):
+        self.points = self.points[0]
+
+    def DiscountFactor(self, dates):
         '''Returns the interpolated discount factor for an arbitrary date
         '''
-        if type(date) is not datetime.datetime and type(date) is not np.datetime64:
+        if isinstance(dates,np.ndarray) is False:
+            dates = np.array(dates)
+        if type(dates[0]) is not datetime.datetime and type(dates[0]) is not np.datetime64:
             raise TypeError('Date must be a datetime.datetime or np.datetime64')
-        if type(date) == datetime.datetime:
-            date = time.mktime(date.timetuple())
+        if type(dates[0]) == datetime.datetime:
+            for date in dates:
+                date = time.mktime(date.timetuple())
 
-        return np.exp(self.log_discount_factor(date))    
+        interpolator = scipy.interpolate.interp1d(self.points['timestamp'],
+                                                  self.points['discount_factor'],
+                                                  kind='linear',
+                                                  fill_value='extrapolate') 
+
+        return np.exp(interpolator(dates.astype('<M8[s]')))
     
     def view(self, ret=False):
         '''Prints the discount factor curve
@@ -57,8 +75,8 @@ class Curve(object):
 
 
 class YieldCurve(Curve):
-    def __init__(self, key,valueDate, ccy, interpType, pillars, discount_curve=False):
-        super(YieldCurve, self).__init__(key, ccy, valueDate,interpType, discount_curve)
+    def __init__(self, key,valueDate, ccy, pillars, discount_curve=False):
+        super(YieldCurve, self).__init__(key, ccy, valueDate, discount_curve)
 
         pillars.sort(key=lambda r:r.maturityDate)
         self.pillars = pillars
@@ -66,16 +84,9 @@ class YieldCurve(Curve):
 
     def Build(self):
         instruments = self._addInstruments(self.pillars)
-        if not isinstance(self.discount_curve, Curve) and self.discount_curve is not False:
+        if not isinstance(self.discountCurve, Curve) and self.discountCurve is not False:
             raise TypeError('Discount curve must of of type Curve')
-        self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
-                                time.mktime(self.valueDate.timetuple()),
-                                np.log(1))],
-                              dtype=[('maturity', 'datetime64[D]'),
-                                     ('timestamp', np.float64),
-                                     ('discount_factor', np.float64)])
 
-        self.points = self.points[0]
         for instrument in instruments:
             df = instrument.SolveDf()
 
@@ -87,8 +98,15 @@ class YieldCurve(Curve):
 
         self._built = True
 
-    def Dv01AtEachPillar(self,shockType, shockAmount, notional):
-        pass
+    def Dv01AtEachPillar(self,shockType, shockAmount= -0.0001, notional= 1e6):
+        baseYc = self
+        shockedYc = self.CreateShockedCurve(shockType, shockAmount)
+        result = []
+        for pillar in baseYc.pillars:
+            baseNpv = YieldCurveFactory.ToAssets(pillar,baseYc,notional).Valuation(baseYc,baseYc)
+            shockedNpv = YieldCurveFactory.ToAssets(pillar,shockedYc,notional).Valuation(shockedYc,shockedYc)
+            result.append((pillar.label,(shockedNpv-baseNpv)/(shockAmount * 10000)))
+        return result
 
     def ShiftZero(self,shockAmount, pillarToShock = -1):
         shiftedKey = self.key + '.ZeroShocked'
@@ -103,8 +121,7 @@ class YieldCurve(Curve):
                 dfShifted = RateConvention('Linear',yearFraction).RateToDf(shockAmount)[0] * df
                 pillar = DiscountFactorRate(maturityDate,dfShifted)
                 shiftedPillars.append(pillar)
-        return YieldCurve(shiftedKey,self.valueDate,self.ccy,self._interpType,
-                          shiftedPillars,self.discount_curve)
+        return YieldCurve(shiftedKey,self.valueDate,self.ccy,shiftedPillars,self.discountCurve)
 
 
     def CreateShockedCurve(self, shockType, shockAmount, pillarToShock =-1):
@@ -112,12 +129,12 @@ class YieldCurve(Curve):
             shockedYc = self.ShiftZero(shockAmount,pillarToShock)
         else:
             shiftedKey = self.key + '.PillarShocked'
-            shiftedPillars = self.pillars
+            shiftedPillars = copy.deepcopy(self.pillars)
             for idx, pillar in enumerate(shiftedPillars):
                 if pillarToShock == -1 or idx == pillarToShock:
                     pillar.Shock(shockAmount)
-            shockedYc = YieldCurve(shiftedKey,self.valueDate,self.ccy,self._interpType,
-                          shiftedPillars,self.discount_curve)
+            shockedYc = YieldCurve(shiftedKey,self.valueDate,self.ccy,
+                          shiftedPillars,self.discountCurve)
         shockedYc.Build()
 
         return shockedYc

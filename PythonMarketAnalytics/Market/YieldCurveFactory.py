@@ -15,10 +15,9 @@ class YieldCurveFactory:
         data = dataFrame.query(filters)
         if data.empty:
             raise Exception('Failed to retrieve curve date')
-        interType = itemToBuild.interType
-        return YieldCurveFactory._ycCreate(data, label, ccy, interType, valueDate)
+        return YieldCurveFactory._ycCreate(data, label, ccy, itemToBuild.discountCurve, valueDate)
 
-    def _ycCreate(df, key, ccy, interType, valueDate):
+    def _ycCreate(df, key, ccy, discountCurve, valueDate):
         pillars = []
         for index, row in df.iterrows():
             pillarType = row['ValueType']
@@ -41,6 +40,17 @@ class YieldCurveFactory:
             if pillar.maturityDate < valueDate:
                 pillars.remove(pillar)
 
-        return mkt.YieldCurve(key,valueDate,ccy,interType,pillars)
+        return mkt.YieldCurve(key,valueDate,ccy,pillars,discountCurve)
+
+    @staticmethod
+    def ToAssets(pillar,curve, notional):
+        if isinstance(pillar,mkt.DepositRate):
+            return mkt.Deposit(pillar,curve,notional)
+        elif isinstance(pillar,mkt.BondQuote):
+            return mkt.Bond(pillar,curve,notional)
+        elif isinstance(pillar,mkt.SwapRate):
+            return mkt.Swap(pillar,curve,notional)
+        else:
+            raise Exception('"{typeof(pillar)}" cannot be converted to asset')
 
 

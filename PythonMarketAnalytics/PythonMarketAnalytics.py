@@ -14,8 +14,10 @@ t = baseMarket.GetItems();
 curve = baseMarket.marketItems['AUDSwap']
 pillarShok = curve.CreateShockedCurve('pillar',0.0001,-1)
 zeroShock = curve.CreateShockedCurve('zero',0.0001,-1)
+dv01 = curve.Dv01AtEachPillar('pillar',-0.0001)
 pillarShok.view()
 zeroShock.view()
+curve.view()
 
 baseMarket.YcShock('AUDSwap','pillar',0.0001,-1)
 print(baseMarket.GetItems())

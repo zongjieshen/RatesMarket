@@ -119,7 +119,7 @@ class Schedule:
         elif EFrequency(frequency) is EFrequency.SemiAnnual:
             return (2, dateutil.relativedelta.relativedelta(months=6))
         elif EFrequency(frequency) is EFrequency.Zero:
-            return (0, dateutil.relativedelta.relativedelta(months=0))
+            return (0, self.maturity - self.valueDate)
         else:
             return (0, dateutil.relativedelta.relativedelta(months=0))
 

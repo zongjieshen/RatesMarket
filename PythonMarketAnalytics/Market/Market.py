@@ -28,6 +28,12 @@ class Market(object):
         else:
             self.marketItems[marketItem.key] = marketItem
 
+    def GetMarketItem(self,curveKey):
+        if curveKey in self.marketItems:
+            return self.marketItems[curveKey]
+        else:
+            return Exception ('"{curveKey} does not exist in the Market "{self.handlename}"')
+
     def YcShock(self,ycKey,shockType,shockAmount,pillarToShock=-1):
         shockedYc = self.marketItems[ycKey].CreateShockedCurve(shockType,shockAmount,pillarToShock)
         self.AddorUpdateItem(shockedYc)
@@ -51,7 +57,7 @@ class MarketFactory():
             if marketItem:
                 market.marketItems[marketItem.key] = marketItem
 
-            market._build()
+        market._build()
         return market
 
 class MarketDataManager():
@@ -59,18 +65,18 @@ class MarketDataManager():
         bondfilters = "ValueType.str.startswith('BondYield').values and Currency == 'AUD'"
         audswapFilters = "(ValueType.str.startswith('DepositRate').values and Label.str.contains ('AUDBILL')) or (ValueType.str.startswith('SwapRate').values and Label.str.contains ('AUDSwap'))"
         
-        BondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD','LogLinear')
-        audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD','LogLinear')
+        BondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD',False)
+        audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD',False)
         itemsToBuild = [BondCurveItem,audSwapItem]
 
         return itemsToBuild
 
 
 class ItemToBuild():
-    def __init__(self, build: bool, itemType: str, label: str, filters: str, ccy: str, InterType: str):
+    def __init__(self, build: bool, itemType: str, label: str, filters: str, ccy: str, discountCurve = False):
         self.build = build
         self.itemType = itemType
         self.label = label
         self.filters = filters
         self.ccy = ccy
-        self.interType = InterType
+        self.discountCurve = discountCurve
