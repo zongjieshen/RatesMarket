@@ -74,7 +74,7 @@ class MarketDataManager():
 
 
 
-        itemsToBuild = [gbpOisItem,bondCurveItem,audSwapItem,jpyOisItem]
+        itemsToBuild = [bondCurveItem,audSwapItem]
 
         return itemsToBuild
 
