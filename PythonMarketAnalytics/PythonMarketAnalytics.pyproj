@@ -25,6 +25,9 @@
     <Compile Include="Market\MarketAddin.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Market\DashBoard.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Market\YieldCurveFactory.py">
       <SubType>Code</SubType>
     </Compile>

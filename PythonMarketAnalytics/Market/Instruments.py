@@ -141,9 +141,11 @@ class Swap(Instrument):
         self.subType = 'vanilla'
         self.notional = notional
         self.paymentDelay = quote.paymentDelay
+        #TODO add paymentDelay to schedule
         self.schedule = Schedule(self.startDate,self.maturity,
                                  quote.paymentFrequency,'modified following','modified following')
         self.curve = curve
+        self.compoundFrequency = quote.compoundFrequency
 
     def SolveDf(self):
         yearFraction = ScheduleDefinition.YearFraction(self.startDate,self.maturity,self.yearBasis)
@@ -164,19 +166,20 @@ class Swap(Instrument):
         fixedLegPv = DiscountCashFlow(self.ccy,self.schedule,self.notional,self.rate,
                               'fixed',self.yearBasis,projectCurve,discountCurve).pv()
 
+        indexType = 'ois' if self.compoundFrequency.lower() == 'daily' else 'floating'
         floatingLegPv = DiscountCashFlow(self.ccy,self.schedule,self.notional,self.rate,
-                              'floating',self.yearBasis,projectCurve,discountCurve).pv()
+                              indexType,self.yearBasis,projectCurve,discountCurve).pv()
 
         return fixedLegPv - floatingLegPv
 
 #Leg modelling
 class DiscountCashFlow():
-    def __init__(self, ccy, schedule, notional, fixedRate, indexKey, yearBasis, projectCurve, discountCurve):
+    def __init__(self, ccy, schedule, notional, fixedRate, indexType, yearBasis, projectCurve, discountCurve):
         self.ccy = ccy
         self.schedule = schedule
         self.notional = notional
         self.fixedRate = fixedRate
-        self.indexKey = indexKey
+        self.indexType = indexType
         self.yearBasis = yearBasis
         self.projectCurve = projectCurve
         self.discount_curve = discountCurve
@@ -188,32 +191,72 @@ class DiscountCashFlow():
             accural_periods = ScheduleDefinition.YearFractionList(periodStart, periodEnd, self.yearBasis)
             return periodStart, periodEnd, accural_periods
 
-        if self.indexKey.lower() == 'fixed':
+        if self.indexType.lower() == 'fixed':
             periodStart, periodEnd, accural_periods = _getPeriods()
 
-            cashflows = self.fixedRate * accural_periods * self.notional
-            cashflows[-1] += self.notional
-            self.schedule.periods['cashflow'] = cashflows
-
-            payment_dates = self.schedule.periods['payment_date']
-            self.schedule.periods['PV'] = cashflows * self.discount_curve.DiscountFactor(payment_dates)
-            return self.schedule.periods['PV'].sum()
-        elif self.indexKey.lower() == 'floating':
+            cashflows = self.fixedRate * accural_periods * self.notional            
+        elif self.indexType.lower() == 'floating':
             periodStart, periodEnd, accural_periods = _getPeriods()
 
             dfStart = self.projectCurve.DiscountFactor(periodStart)
             dfEnd = self.projectCurve.DiscountFactor(periodEnd)
-            fwd = (dfStart / dfEnd - 1) / accural_periods
-
-            cashflows = fwd * accural_periods * self.notional
-            cashflows[-1] += self.notional
-            self.schedule.periods['cashflow'] = cashflows
-
-            payment_dates = self.schedule.periods['payment_date']
-            self.schedule.periods['PV'] = cashflows * self.discount_curve.DiscountFactor(payment_dates)
-            return self.schedule.periods['PV'].sum()
+            fwd = (dfStart / dfEnd - 1)
+            cashflows = fwd * self.notional
+        elif self.indexType.lower() == 'ois':
+            cashflows =[]
+            for idx, period in enumerate(self.schedule.periods):
+                fwd = self.__ois_fwd_rate(self.projectCurve, period)
+                cashflows.append(fwd * self.notional)
         else:
             return NotImplementedError
+
+        cashflows[-1] += self.notional
+        self.schedule.periods['cashflow'] = cashflows
+        payment_dates = self.schedule.periods['payment_date']
+        self.schedule.periods['PV'] = cashflows * self.discount_curve.DiscountFactor(payment_dates)
+        return self.schedule.periods['PV'].sum()
+
+
+
+    def __ois_fwd_rate(self, projectCurve, period):
+        '''Private method for calculating the compounded forward rate for an OIS
+        swap.
+
+        The compounded forward rate is calculated as the
+
+                                     DF[i]
+                                Π [ ------- ] - 1
+                                i   DF[i+1]
+
+        Note that it achieves very speedily by calculating each forward
+        rate (+ 1) for the entire date array, and then calculating the product
+        of the array. Additionally, there are 3 entries for every Friday, as
+        each friday should compound 3 times (no new rates on weekends).
+
+        Arguments:
+            interpolator (scipy.interpolate):   temporary interpolator object
+                                                that includes the current swap
+                                                maturity guess discount factor.
+            period (np.recarray)            :   1 line of the swapschedule array
+                                                must contain the accrual start
+                                                and end dates
+        '''
+        start_date = period['accrual_start'].astype('<M8[s]')
+        end_date = period['accrual_end'].astype('<M8[s]')
+        one_day = np.timedelta64(1, 'D')
+        start_day = start_date.astype(object).weekday()
+        rate = 1
+        first_dates = np.arange(start_date, end_date, one_day)
+        # replace all Saturdays and Sundays with Fridays
+        fridays = first_dates[4 - start_day::7]
+        first_dates[5 - start_day::7] = fridays[:len(first_dates[5 - start_day::7])]
+        first_dates[6 - start_day::7] = fridays[:len(first_dates[6 - start_day::7])]
+        second_dates = first_dates + one_day
+        initial_dfs = projectCurve.DiscountFactor(first_dates)
+        end_dfs = projectCurve.DiscountFactor(second_dates)
+        rates = (initial_dfs / end_dfs)
+        rate = rates.prod() - 1
+        return rate
 
 
 

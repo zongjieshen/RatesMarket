@@ -19,8 +19,10 @@ pillarShok.view()
 zeroShock.view()
 curve.view()
 
-baseMarket.YcShock('AUDSwap','pillar',0.0001,-1)
-print(baseMarket.GetItems())
+gbpois = baseMarket.GetMarketItem('GBPOIS')
+gbpois.view()
+#baseMarket.YcShock('AUDSwap','pillar',0.0001,-1)
+#print(baseMarket.GetItems())
 
 
 

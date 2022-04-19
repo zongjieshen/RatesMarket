@@ -139,27 +139,45 @@ class ScheduleDefinition():
                                              preceding,
                                              modified following
         '''
-
         if adjustment == 'unadjusted':
             return date
         elif adjustment == 'following':
             if date.weekday() < 5:
-                return date
+                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
             else:
                 return date + ScheduleDefinition._timedelta(7 - date.weekday(), 'days')
         elif adjustment == 'preceding':
             if date.weekday() < 5:
-                return date
+                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
             else:
-                return date - _timedelta(max(0, date.weekday() - 5), 'days')
+                date = date - ScheduleDefinition._timedelta(max(0, date.weekday() - 5), 'days')
+                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
         elif adjustment == 'modified following':
             if date.month == ScheduleDefinition._date_adjust(date, 'following').month:
-                return ScheduleDefinition._date_adjust(date, 'following')
+                date = ScheduleDefinition._date_adjust(date, 'following')
+                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
             else:
-                return date - ScheduleDefinition._timedelta(7 - date.weekday(), 'days')
+                date = date - ScheduleDefinition._timedelta(7 - date.weekday(), 'days')
+                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
         else:
             raise Exception('Adjustment period not recognized')
 
+    @staticmethod
+    def _holidayAdj(date,adjustment, calendar):
+        if date not in calendar or adjustment == 'unadjusted':
+            return date
+        else:
+            while date in calendar:
+                if adjustment == 'following':
+                    date = pd.to_datetime(date) + pd.offsets.DateOffset(1)
+                elif adjustment == 'preceding':
+                    date = pd.to_datetime(date) - pd.offsets.DateOffset(1)
+                else:
+                    date = pd.to_datetime(date) + pd.offsets.DateOffset(1)
+        return date.to_pydatetime()
+            
+
+    
     @staticmethod
     def _timedelta(delta, period_length):
         '''Private function to convert a number and string (eg -- 3, 'months') to
@@ -239,6 +257,8 @@ class ScheduleDefinition():
     def ShiftDays(valueDate, tenors):
         tenors = [x.strip() for x in tenors.split("+")[1:]]
         date = valueDate
+        if not tenors:
+            return valueDate
         for tenor in tenors:
             if tenor.endswith('y'):
                 offset = int(tenor.replace('y',''))
@@ -249,6 +269,9 @@ class ScheduleDefinition():
             elif tenor.endswith('b'):
                 offset = int(tenor.replace('b',''))
                 date = pd.to_datetime(date) + pd.offsets.BusinessDay(offset)
+            elif tenor.endswith('d'):
+                offset = int(tenor.replace('d',''))
+                date = pd.to_datetime(date) + pd.offsets.DateOffset(offset)
             else:
                 raise Exception('Cannot parse the date')
         return date.to_pydatetime()

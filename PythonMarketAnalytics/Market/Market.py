@@ -64,10 +64,17 @@ class MarketDataManager():
     def baseMarket():
         bondfilters = "ValueType.str.startswith('BondYield').values and Currency == 'AUD'"
         audswapFilters = "(ValueType.str.startswith('DepositRate').values and Label.str.contains ('AUDBILL')) or (ValueType.str.startswith('SwapRate').values and Label.str.contains ('AUDSwap'))"
-        
-        BondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD',False)
+        gbpOisFilters = "Currency.str.startswith('GBP') and Context.str.startswith('Valuation') and Source == 'BBG' and ValueType.str.startswith('SwapRate') and CompoundingFrequency.str.startswith('Daily')"
+        jpyOisFilters = "Currency.str.startswith('JPY') and Context.str.startswith('Valuation') and Source == 'BBG' and ValueType.str.startswith('SwapRate') and CompoundingFrequency.str.startswith('Daily')"
+
+        bondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD',False)
         audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD',False)
-        itemsToBuild = [BondCurveItem,audSwapItem]
+        gbpOisItem = ItemToBuild(True,'yieldCurve','GBPOIS',gbpOisFilters,'GBP',False)
+        jpyOisItem = ItemToBuild(True,'yieldCurve','JPYOIS',gbpOisFilters,'JPY',False)
+
+
+
+        itemsToBuild = [gbpOisItem,bondCurveItem,audSwapItem,jpyOisItem]
 
         return itemsToBuild
 
