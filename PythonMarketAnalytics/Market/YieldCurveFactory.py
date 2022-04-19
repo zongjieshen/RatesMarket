@@ -3,7 +3,7 @@ import numpy as np
 import datetime
 
 class YieldCurveFactory:
-    """description of class"""
+    """Factory to add rates to the yield curve class"""
 
     @staticmethod
     def Creat(dataFrame, itemToBuild, valueDate, build: bool):

@@ -58,9 +58,12 @@
     <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda38-64" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include=".ipynb_checkpoints\" />
     <Folder Include="Market\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".ipynb_checkpoints\Untitled-checkpoint.ipynb" />
+    <Content Include="Market\BondYield.xlsx" />
     <Content Include="Market\MarketAddin.xlsm" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

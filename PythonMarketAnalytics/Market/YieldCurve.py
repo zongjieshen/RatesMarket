@@ -98,6 +98,7 @@ class YieldCurve(Curve):
 
         self._built = True
 
+    #Dv01 wrapper 
     def Dv01AtEachPillar(self,shockType, shockAmount= -0.0001, notional= 1e6):
         baseYc = self
         shockedYc = self.CreateShockedCurve(shockType, shockAmount)
@@ -108,6 +109,7 @@ class YieldCurve(Curve):
             result[pillar.label] = (shockedNpv-baseNpv)/(shockAmount * 10000)
         return pd.DataFrame(list(result.items()),columns= ['Pillar','Amount'])
 
+    #Zero Shock
     def ShiftZero(self,shockAmount, pillarToShock = -1):
         shiftedKey = self.key + '.ZeroShocked'
         shiftedPillars =[]
@@ -123,7 +125,7 @@ class YieldCurve(Curve):
                 shiftedPillars.append(pillar)
         return YieldCurve(shiftedKey,self.valueDate,self.ccy,shiftedPillars,self.discountCurve)
 
-
+    #PillarShock
     def CreateShockedCurve(self, shockType, shockAmount, pillarToShock =-1):
         if shockType.lower() == 'zero':
             shockedYc = self.ShiftZero(shockAmount,pillarToShock)
