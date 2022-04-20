@@ -25,13 +25,12 @@ class Curve(object):
     def DiscountFactor(self, dates):
         '''Returns the interpolated discount factor for an arbitrary date
         '''
+        if isinstance(dates,list) is True:
+            dates = np.asarray(dates)
         if isinstance(dates,np.ndarray) is False:
-            dates = np.array(dates)
+            dates = np.asarray([dates])
         if type(dates[0]) is not datetime.datetime and type(dates[0]) is not np.datetime64:
             raise TypeError('Date must be a datetime.datetime or np.datetime64')
-        if type(dates[0]) == datetime.datetime:
-            for date in dates:
-                date = time.mktime(date.timetuple())
 
         interpolator = scipy.interpolate.interp1d(self.points['timestamp'],
                                                   self.points['discount_factor'],
@@ -40,6 +39,27 @@ class Curve(object):
 
         return np.exp(interpolator(dates.astype('<M8[s]')))
     
+    def ZeroRates(self, dates, yearBasis = 'acton365f', rateConvention = 'linear'):
+        if isinstance(dates, list) == False:
+            dates =[dates]
+        startDates = [self.valueDate] * len(dates)
+        yearFractions = ScheduleDefinition.YearFractionList(startDates,dates,yearBasis)
+        dfs = self.DiscountFactor(dates)
+        values = RateConvention(rateConvention,yearFractions).DfToRate(dfs)
+        return pd.DataFrame(list(zip(dates,values)),columns =['Dates', 'ZeroRates'])
+    
+    def FwdRates(self, startDates, tenor, yearBasis = 'acton365f', rateConvention = 'linear'):
+        if isinstance(startDates, list) == False:
+            startDates =[startDates]
+        endDates = [ScheduleDefinition.ShiftDays(x,tenor) for x in startDates] 
+        yearFractions = ScheduleDefinition.YearFractionList(startDates,endDates,yearBasis)
+        df1 = self.DiscountFactor(startDates)
+        df2 = self.DiscountFactor(endDates)
+        dfs = df2/df1
+        fwd = RateConvention(rateConvention,yearFractions).DfToRate(dfs)
+        return pd.DataFrame(list(zip(startDates,fwd)),columns =['Dates', 'FwdRates'])
+
+
     def view(self, ret=False):
         '''Prints the discount factor curve
         Optionally return tuple of the maturities and discount factors

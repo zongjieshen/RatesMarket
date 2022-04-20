@@ -18,6 +18,8 @@ class EFrequency(Enum):
 class Schedule:
     '''Swap fixing, accrual, and payment dates
     '''
+    adjustments ={'unadjusted','following','modified following','preceding'}
+
     def __init__(self, valueDate, maturity,frequency,
                  period_adjustment='unadjusted',
                  payment_adjustment='unadjusted'
@@ -34,6 +36,23 @@ class Schedule:
         # date generation routine
         self._gen_periods()
         self._create_schedule()
+    #Properties
+    def get_period_adjustment(self):
+        return self._period_adjustment
+    def set_period_adjustment(self,period_adjustment):
+        if period_adjustment not in self.adjustments:
+            raise ValueError(f"Invalid adjustment {period_adjustment} defined")
+        self._period_adjustment = period_adjustment
+
+    def get_payment_adjustment(self):
+        return self._payment_adjustment
+    def set_payment_adjustment(self,payment_adjustment):
+        if payment_adjustment not in self.adjustments:
+            raise ValueError(f"Invalid adjustment {payment_adjustment} defined")
+        self._payment_adjustment = payment_adjustment
+
+    period_adjustment = property(fget=get_period_adjustment,fset=set_period_adjustment)
+    payment_adjustment = property(fget=get_payment_adjustment,fset=set_payment_adjustment)
 
     def _gen_periods(self):
         '''Private method to generate the date series

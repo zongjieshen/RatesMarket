@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 valueDate = datetime(2021, 12, 31)
 
-filepath = r'C:\Users\Zongjie\source\repos\MarketBuilding\PythonApplication1\MarketData\BondYield.xlsx'
+filepath = r'C:\Users\sheny\source\repos\zongjieshen\PythonMarketAnalytics\PythonMarketAnalytics\Market\BondYield.xlsx'
 
 baseMarket = mkt.MarketFactory.Create('baseMarket',valueDate,filepath)
 t = baseMarket.GetItems()
@@ -17,6 +17,9 @@ dv01 = curve.Dv01AtEachPillar('pillar',-0.0001)
 pillarShok.view()
 zeroShock.view()
 curve.view()
+
+testDate = datetime(2025, 12, 31)
+print(curve.FwdRates(testDate,'+3m'))
 
 gbpois = baseMarket.GetMarketItem('GBPOIS')
 gbpois.view()

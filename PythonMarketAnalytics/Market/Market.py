@@ -63,9 +63,9 @@ class MarketFactory():
 class MarketDataManager():
     def baseMarket():
         bondfilters = "ValueType.str.startswith('BondYield').values and Currency == 'AUD'"
-        audswapFilters = "(ValueType.str.startswith('DepositRate').values and Label.str.contains ('AUDBILL')) or (ValueType.str.startswith('SwapRate').values and Label.str.contains ('AUDSwap'))"
-        gbpOisFilters = "Currency.str.startswith('GBP') and Context.str.startswith('Valuation') and Source == 'BBG' and ValueType.str.startswith('SwapRate') and CompoundingFrequency.str.startswith('Daily')"
-        jpyOisFilters = "Currency.str.startswith('JPY') and Context.str.startswith('Valuation') and Source == 'BBG' and ValueType.str.startswith('SwapRate') and CompoundingFrequency.str.startswith('Daily')"
+        audswapFilters = "(ValueType.str.startswith('DepositRate').values and Label.str.contains ('AUDBILL').values) or (ValueType.str.startswith('SwapRate').values and Label.str.contains ('AUDSwap').values)"
+        gbpOisFilters = "Currency.str.startswith('GBP').values and Context.str.startswith('Valuation').values and Source == 'BBG' and ValueType.str.startswith('SwapRate').values and CompoundingFrequency.str.startswith('Daily').values"
+        jpyOisFilters = "Currency.str.startswith('JPY').values and Context.str.startswith('Valuation').values and Source == 'BBG' and ValueType.str.startswith('SwapRate').values and CompoundingFrequency.str.startswith('Daily').values"
 
         bondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD',False)
         audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD',False)
