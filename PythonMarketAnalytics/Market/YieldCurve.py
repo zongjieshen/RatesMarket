@@ -23,6 +23,8 @@ class Curve():
                                      ('discount_factor', np.float64)])
 
         self.points = self.points[0]
+    def Build(self):
+        return NotImplementedError
 
     def DiscountFactor(self, dates, returndf = False):
         '''Returns the interpolated discount factor for an arbitrary date
@@ -79,7 +81,7 @@ class Curve():
         startDates = [self.valueDate] * len(dates)
         dcf = self.DiscountFactor(startDates) - self.DiscountFactor(dates)
         yearFractions = ScheduleDefinition.YearFractionList(dates,endDates,yearBasis)
-        schedules = [mkt.Schedule(self.valueDate,date,tenor,'modified following','modified following')._gen_dates() for date in dates]
+        schedules = [mkt.Schedule(self.valueDate,date,tenor,'modified following','modified following')._gen_dates('modified following') for date in dates]
         cumDcf = [self.DiscountFactor(schedule) for schedule in schedules]
         sumProducts = np.asarray([np.sum(date) for date in np.multiply(cumDcf, yearFractions)])
         swapRates = np.divide(dcf, sumProducts)
@@ -125,16 +127,18 @@ class Curve():
     def _addInstruments(self, market):
         instruments =[]
         for pillar in self.pillars:
-            if isinstance(pillar,BondYield):
+            if pillar.quoteType == 'BondYield':
                 instruments.append(Bond(pillar, self, market))
-            elif isinstance(pillar,BondYield):
+            elif pillar.quoteType == 'BondQuote':
                 pass
-            elif isinstance(pillar,DiscountFactorRate):
+            elif pillar.quoteType == 'DiscountFactor':
                 instruments.append(DiscountFactor(pillar))
-            elif isinstance(pillar,DepositRate):
+            elif pillar.quoteType == 'DepositRate':
                 instruments.append(Deposit(pillar, self, market))
-            elif isinstance(pillar,SwapRate):
+            elif pillar.quoteType == 'SwapRate':
                 instruments.append(Swap(pillar, self, market))
+            elif pillar.quoteType == 'BasisSwapRate':
+                instruments.append(BasisSwap(pillar, self, market))
         return instruments
 
 

@@ -29,6 +29,9 @@ class YieldCurveFactory:
             elif pillarType == 'SwapRate':
                 pillar = mkt.SwapRate.fromRow(row, valueDate)
                 pillars.append(pillar)
+            elif pillarType == 'BasisSwap':
+                pillar = mkt.BasisSwapRate.fromRow(row, valueDate)
+                pillars.append(pillar)
             elif pillarType == 'BondYield':
                 pillar = mkt.BondYield.fromRow(row, 'Fixed', valueDate)
                 if pillar.maturityDate - pillar.startDate > datetime.timedelta(days=15):

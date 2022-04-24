@@ -6,17 +6,17 @@ from datetime import datetime, timedelta
 
 valueDate = datetime(2021, 12, 31)
 
-filepath = r'C:\Users\sheny\source\repos\zongjieshen\PythonMarketAnalytics\PythonMarketAnalytics\Market\BondYield.xlsx'
-baseMarket = mkt.MarketFactory.Create('baseMarket',valueDate,filepath)
+
 #t = baseMarket.GetItems()
-curve = baseMarket.marketItems['AUDSwap']
+
 #pillarShok = curve.CreateShockedCurve('pillar',0.0001,-1)
 #zeroShock = curve.CreateShockedCurve('zero',0.0001,-1)
 #dv01 = curve.Dv01AtEachPillar('pillar',-0.0001)
 #pillarShok.view()
-curve.view()
+#curve = baseMarket.marketItems['AUDSwap']
+#curve.view()
 
-testDate = [datetime(2040, 12, 26),datetime(2050, 12, 26)]
+#testDate = [datetime(2040, 12, 26),datetime(2050, 12, 26)]
 #print(curve.FwdRates(testDate,'+3m'))
 
 #mkt.YieldCurve.Charts(baseMarket.marketItems['AUDSwap'], 'SwapRates',testDate,'6m')
@@ -102,8 +102,16 @@ def MarketDv01AtEachPillar(marketHandle, curveName, shockType, shockAmount= -0.0
     return curve.Dv01AtEachPillar(shockType, shockAmount, notional)
     
 
-    
+from multiprocessing import freeze_support, set_start_method
 if __name__ == '__main__':
+    set_start_method('spawn', True)
+    freeze_support()
+    filepath = r'C:\Users\sheny\source\repos\zongjieshen\PythonMarketAnalytics\PythonMarketAnalytics\Market\BondYield.xlsx'
+    baseMarket = mkt.MarketFactory.Create('baseMarket',valueDate,filepath)
+    curve = baseMarket.marketItems['AUDSwap']
+    aud3mcurve = baseMarket.marketItems['AUDSwap3m']
+    curve.view()
+    aud3mcurve.view()
     xw.serve()
 
 

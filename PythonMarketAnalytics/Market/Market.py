@@ -1,18 +1,28 @@
 import pandas as pd
 import Market as mkt
 import operator
+import multiprocessing as mp
 
-class Market(object):
+from Market.YieldCurve import *                                                    
+
+
+class Market():
     def __init__(self, handleName, valueDate, filePath):
         self.handleName = handleName
         self.valueDate = mkt.ScheduleDefinition.DateConvert(valueDate)
         self._itemsToBuild = MarketDataManager.baseMarket()
         self.marketItems = {}
-
+    def worker(arg):
+        obj, market = arg
+        obj.Build(market)
+        return obj
     def _build(self):
-        marketItems = sorted(self.marketItems.values(), key=operator.attrgetter('discountCurve'))
-        for key, marketItem in self.marketItems.items():
-            marketItem.Build(self)
+        marketItems = sorted(self.marketItems.values(), key=lambda x: (x.key != x.discountCurve))
+        #with mp.Pool(processes=4) as pool:
+            #listtest = pool.map(Market.worker, ((obj,self) for obj in marketItems))
+
+        for marketItem in marketItems:
+           marketItem.Build(self)
 
     def GetItems(self):
         if len(self.marketItems)  < 1:
@@ -68,15 +78,19 @@ class MarketDataManager():
         audswapFilters = "(ValueType.str.startswith('DepositRate').values and Label.str.contains ('AUDBILL').values) or (ValueType.str.startswith('SwapRate').values and Label.str.contains ('AUDSwap').values)"
         gbpOisFilters = "Currency.str.startswith('GBP').values and Context.str.startswith('Valuation').values and Source == 'BBG' and ValueType.str.startswith('SwapRate').values and CompoundingFrequency.str.startswith('Daily').values"
         jpyOisFilters = "Currency.str.startswith('JPY').values and Context.str.startswith('Valuation').values and Source == 'BBG' and ValueType.str.startswith('SwapRate').values and CompoundingFrequency.str.startswith('Daily').values"
+        audSwap3mFilters = "(ValueType.str.startswith('DepositRate').values and Label.str.contains ('AUDBILL').values) or ValueType.str.startswith('SwapRate').values and PaymentFrequency == 'Quarterly' and Label.str.startswith('AUDSwap').values or ValueType.str.startswith('BasisSwap').values and PaymentFrequency == 'SemiAnnual' and Label.str.startswith('AUDBasis6m3m').values"
+        audSwap6mFilters = "(ValueType.str.startswith('DepositRate').values and Label.str.contains ('AUDBILL').values) or ValueType.str.startswith('SwapRate').values and PaymentFrequency == 'SemiAnnual' and Label.str.startswith('AUDSwap').values or ValueType.str.startswith('BasisSwap').values and PaymentFrequency == 'Quarterly' and Label.str.startswith('AUDBasis6m3m').values"
 
         bondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD')
-        audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD','AUDSwap')
+        audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD')
         gbpOisItem = ItemToBuild(True,'yieldCurve','GBPOIS',gbpOisFilters,'GBP')
         jpyOisItem = ItemToBuild(True,'yieldCurve','JPYOIS',jpyOisFilters,'JPY')
+        audSwap3mItem = ItemToBuild(True,'yieldCurve','AUDSwap3m',audSwap3mFilters,'AUD','AUDSwap')
+        audSwap6mItem = ItemToBuild(True,'yieldCurve','AUDSwap6m',audSwap6mFilters,'AUD','AUDSwap')
 
 
 
-        itemsToBuild = [bondCurveItem,audSwapItem,gbpOisItem,jpyOisItem]
+        itemsToBuild = [audSwap3mItem,audSwap6mItem,bondCurveItem,gbpOisItem,jpyOisItem,audSwapItem]
 
         return itemsToBuild
 

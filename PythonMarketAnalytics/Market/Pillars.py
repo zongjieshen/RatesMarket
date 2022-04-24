@@ -110,9 +110,10 @@ class SwapRate(Rate):
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
                    yearBasis, rate, paymentFrequency,calendar,compoundFrequency,paymentDelay)
 
-
-
-
+class BasisSwapRate(SwapRate):
+    def __init__(self, *args, **kwargs):
+        super(BasisSwapRate, self).__init__(*args, **kwargs)
+        self.quoteType = 'BasisSwapRate'
 
 
 

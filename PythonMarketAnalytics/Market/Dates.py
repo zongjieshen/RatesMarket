@@ -100,7 +100,7 @@ class Schedule:
 
 
 
-    def _gen_dates(self, adjustment, calendar):
+    def _gen_dates(self, adjustment, calendar = 'DEFAULT'):
         '''Private function to backward generate a series of dates starting
         from the maturity to the valueDate.
 

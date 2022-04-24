@@ -176,13 +176,40 @@ class Swap(Instrument):
 
         return fixedLegPv - floatingLegPv
 
+class BasisSwap(Swap):
+    def __init__(self, *args, **kwargs):
+        super(BasisSwap, self).__init__(*args, **kwargs)
+        self.subType = 'basis'
+
+    def SolveDf(self):
+        discountCurve = self.market.GetMarketItem(self.curve.discountCurve)
+        guess = np.log(discountCurve.DiscountFactor(self.maturity))
+        return scipy.optimize.newton(self._objectiveFunction, guess)
+
+    def _objectiveFunction(self,guess):
+        if not isinstance(guess, (int, float, complex)):
+            guess = guess[0]
+
+        temp_curve, discountCurve = self._copy(guess)
+        return self.Valuation(temp_curve, discountCurve)
+
+    def Valuation(self, projectCurve, discountCurve):
+        basisLeg = DiscountCashFlow(self.ccy,self.schedule,self.notional,self.rate,
+                              'basis',self.yearBasis,projectCurve,discountCurve).pv()
+
+        indexType = 'ois' if self.compoundFrequency.lower() == 'daily' else 'floating'
+        floatingLegPv = DiscountCashFlow(self.ccy,self.schedule,self.notional,self.rate,
+                              indexType,self.yearBasis,discountCurve,discountCurve).pv()
+
+        return basisLeg - floatingLegPv
+
 #Leg modelling
 class DiscountCashFlow():
-    def __init__(self, ccy, schedule, notional, fixedRate, indexType, yearBasis, projectCurve, discountCurve):
+    def __init__(self, ccy, schedule, notional, rate, indexType, yearBasis, projectCurve, discountCurve):
         self.ccy = ccy
         self.schedule = schedule
         self.notional = notional
-        self.fixedRate = fixedRate
+        self.rate = rate
         self.indexType = indexType
         self.yearBasis = yearBasis
         self.projectCurve = projectCurve
@@ -198,7 +225,7 @@ class DiscountCashFlow():
         if self.indexType.lower() == 'fixed':
             periodStart, periodEnd, accural_periods = _getPeriods()
 
-            cashflows = self.fixedRate * accural_periods * self.notional            
+            cashflows = self.rate * accural_periods * self.notional            
         elif self.indexType.lower() == 'floating':
             periodStart, periodEnd, accural_periods = _getPeriods()
 
@@ -211,6 +238,12 @@ class DiscountCashFlow():
             for period in self.schedule.periods:
                 fwd = self.__ois_fwd_rate(self.projectCurve, period)
                 cashflows.append(fwd * self.notional)
+        elif self.indexType.lower() == 'basis':
+            periodStart, periodEnd, accural_periods = _getPeriods()
+            dfStart = self.projectCurve.DiscountFactor(periodStart)
+            dfEnd = self.projectCurve.DiscountFactor(periodEnd)
+            fwd = (dfStart / dfEnd - 1) + self.rate * accural_periods
+            cashflows = fwd * self.notional
         else:
             return NotImplementedError
 
