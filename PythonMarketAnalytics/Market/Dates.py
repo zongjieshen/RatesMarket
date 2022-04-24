@@ -1,80 +1,89 @@
 #! /usr/bin/env python
 # vim: set fileencoding=utf-8
-import calendar
+from calendar import calendar
+import holidays
 import datetime
-import dateutil.relativedelta
+
+from pandas.core.algorithms import value_counts
 import numpy as np
 import pandas as pd
 from enum import Enum
-import holidays
 
 class EFrequency(Enum):
-        Annual = 'Annual'
-        SemiAnnual = 'SemiAnnual'
-        Quarterly = 'Quarterly'
-        Monthly = 'Monthly'
-        Zero = 'Zero'
-       
+        Annual = 1
+        SemiAnnual = 2
+        Quarterly = 4
+        Monthly = 12
+        Zero = 0
+
+class ECalendar(Enum):
+        SYD = holidays.AU()
+        CAN = holidays.CA()
+        SWI = holidays.CH()
+        DEN = holidays.DK()
+        EUR = holidays.TAR()
+        UKG = holidays.UK()
+        HKG = holidays.HK()
+        JAP = holidays.JP()
+        NOR = holidays.NO()
+        NZL = holidays.NZ()
+        SWE = holidays.SE()
+        SIN = holidays.SG()
+        USA = holidays.US()
+        TOKYO = holidays.JP()
+        LONDON = holidays.England()
+        DEFAULT = holidays.AU()
+
+
 class Schedule:
-    '''Swap fixing, accrual, and payment dates
+    '''Schedule fixing, accrual, and payment dates
     '''
     adjustments ={'unadjusted','following','modified following','preceding'}
 
     def __init__(self, valueDate, maturity,frequency,
                  period_adjustment='unadjusted',
-                 payment_adjustment='unadjusted'
-                 ):
+                 payment_adjustment='unadjusted',
+                 calendar = 'SYD'):
 
         # variable assignment
         self.valueDate = valueDate
         self.maturity = maturity
-        self.period_delta = self._couponPerAnnum(frequency)[1]
-        self.couponPerAnnum = self._couponPerAnnum(frequency)[0]
+        self.period = frequency
         self.period_adjustment = period_adjustment
         self.payment_adjustment = payment_adjustment
+        self.calendar = calendar
 
-        # date generation routine
-        self._gen_periods()
-        self._create_schedule()
-    #Properties
-    def get_period_adjustment(self):
+        if frequency in EFrequency._member_names_:
+            self.couponPerAnnum = EFrequency[frequency].value
+    
+    @property
+    def period_adjustment(self):
         return self._period_adjustment
-    def set_period_adjustment(self,period_adjustment):
+    @period_adjustment.setter
+    def period_adjustment(self,period_adjustment):
         if period_adjustment not in self.adjustments:
             raise ValueError(f"Invalid adjustment {period_adjustment} defined")
         self._period_adjustment = period_adjustment
 
-    def get_payment_adjustment(self):
+    @property
+    def payment_adjustment(self):
         return self._payment_adjustment
-    def set_payment_adjustment(self,payment_adjustment):
+    @payment_adjustment.setter
+    def payment_adjustment(self,payment_adjustment):
         if payment_adjustment not in self.adjustments:
             raise ValueError(f"Invalid adjustment {payment_adjustment} defined")
         self._payment_adjustment = payment_adjustment
 
-    period_adjustment = property(fget=get_period_adjustment,fset=set_period_adjustment)
-    payment_adjustment = property(fget=get_payment_adjustment,fset=set_payment_adjustment)
 
-    def _gen_periods(self):
-        '''Private method to generate the date series
-        '''
-        self._period_ends = self._gen_dates(self.valueDate,
-                                                self.maturity,
-                                                self.period_delta,
-                                                self.period_adjustment)
-        self._adjusted_period_ends = self._gen_dates(self.valueDate,
-                                                     self.maturity,
-                                                     self.period_delta,
-                                                     self.period_adjustment)
-        self._period_starts = [self.valueDate] + self._adjusted_period_ends[:-1]
-        self._fixing_dates = self._gen_date_adjustments(self._adjusted_period_ends,
-                                                            self.period_adjustment)
-        self._payment_dates = self._gen_date_adjustments(self._period_ends,
-                                                         0,
-                                                         adjustment=self.payment_adjustment)
 
     def _create_schedule(self):
         '''Private function to merge the lists of periods to a np recarray
         '''
+        self._period_starts = [self.valueDate] + self._gen_dates(self.period_adjustment,self.calendar)[:-1]
+        self._adjusted_period_ends = self._gen_dates(self.period_adjustment,self.calendar)
+        self._fixing_dates = self._gen_date_adjustments(self._adjusted_period_ends,self.period_adjustment,self.calendar)
+        self._payment_dates = self._gen_dates(self.payment_adjustment,self.calendar)
+
         arrays = self._np_dtarrays(self._fixing_dates, self._period_starts,
                                    self._adjusted_period_ends,
                                    self._payment_dates)
@@ -91,30 +100,35 @@ class Schedule:
 
 
 
-    def _gen_dates(self, valueDate, maturity, delta, adjustment):
+    def _gen_dates(self, adjustment, calendar):
         '''Private function to backward generate a series of dates starting
         from the maturity to the valueDate.
 
         Note that the valueDate date is not returned.
         '''
+        delta = ScheduleDefinition._parseDate(self.period, self.valueDate, self.maturity)
+
         dates = []
-        current = maturity
+        current = self.maturity
         counter = 0
-        while current > valueDate:
-            dates.append(ScheduleDefinition._date_adjust(current, adjustment))
+        while current > self.valueDate:
+            dates.append(current)
             counter += 1
-            current = maturity - (delta * counter)
-        return dates[::-1]
+            current = self.maturity - (delta * counter)
+
+        adjustedDates = self._gen_date_adjustments(dates[::-1],adjustment,calendar)
+
+        return adjustedDates
 
 
-    def _gen_date_adjustments(self, dates, delta, adjustment='unadjusted'):
+    def _gen_date_adjustments(self, dates, adjustment, calendar):
         '''Private function to take a list of dates and adjust each for a number
         of days. It will also adjust each date for a business day adjustment if
         requested.
         '''
         adjusted_dates = []
         for date in dates:
-            adjusted_date = ScheduleDefinition._date_adjust(date, adjustment)
+            adjusted_date = ScheduleDefinition._date_adjust(date, adjustment,calendar)
             adjusted_dates.append(adjusted_date)
         return adjusted_dates
 
@@ -128,92 +142,31 @@ class Schedule:
             arrays.append(np.asarray([np.datetime64(date.strftime(fmt)) for date in arg]))
         return tuple(arrays)
 
-    def _couponPerAnnum(self,frequency):
-        if EFrequency(frequency) is EFrequency.Annual:
-            return (1, dateutil.relativedelta.relativedelta(years=1))
-        elif EFrequency(frequency) is EFrequency.Monthly:
-            return (12, dateutil.relativedelta.relativedelta(months=1))
-        elif EFrequency(frequency) is EFrequency.Quarterly:
-            return (4, dateutil.relativedelta.relativedelta(months=3))
-        elif EFrequency(frequency) is EFrequency.SemiAnnual:
-            return (2, dateutil.relativedelta.relativedelta(months=6))
-        elif EFrequency(frequency) is EFrequency.Zero:
-            return (0, self.maturity - self.valueDate)
-        else:
-            return (0, dateutil.relativedelta.relativedelta(months=0))
-
-
 class ScheduleDefinition():
 
     @staticmethod
-    def _date_adjust(date, adjustment, calendar = holidays.AU()):
+    def _date_adjust(date, adjustment,calendar):
         '''Method to return a date that is adjusted according to the
         adjustment convention method defined
-
-        Arguments:
-            date (datetime)     : Date to be adjusted
-            adjustment (str)    : Adjustment type
-                                  available: unadjusted,
-                                             following,
-                                             preceding,
-                                             modified following
         '''
+        calendar = 'DEFAULT' if calendar == None else calendar
         if adjustment == 'unadjusted':
             return date
-        elif adjustment == 'following':
-            if date.weekday() < 5:
-                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
-            else:
-                return date + ScheduleDefinition._timedelta(7 - date.weekday(), 'days')
-        elif adjustment == 'preceding':
-            if date.weekday() < 5:
-                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
-            else:
-                date = date - ScheduleDefinition._timedelta(max(0, date.weekday() - 5), 'days')
-                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
-        elif adjustment == 'modified following':
-            if date.month == ScheduleDefinition._date_adjust(date, 'following').month:
-                date = ScheduleDefinition._date_adjust(date, 'following')
-                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
-            else:
-                date = date - ScheduleDefinition._timedelta(7 - date.weekday(), 'days')
-                return ScheduleDefinition._holidayAdj(date,adjustment,calendar)
         else:
-            raise Exception('Adjustment period not recognized')
-
-    @staticmethod
-    def _holidayAdj(date,adjustment, calendar):
-        if date not in calendar or adjustment == 'unadjusted':
-            return date
-        else:
-            while date in calendar:
+            while date.weekday() > 4 or date in ECalendar[calendar].value:
                 if adjustment == 'following':
-                    date = pd.to_datetime(date) + pd.offsets.DateOffset(1)
+                    date = date + pd.offsets.DateOffset(1)
                 elif adjustment == 'preceding':
-                    date = pd.to_datetime(date) - pd.offsets.DateOffset(1)
+                    date = date - pd.offsets.DateOffset(1)
                 else:
-                    date = pd.to_datetime(date) + pd.offsets.DateOffset(1)
-        return date.to_pydatetime()
-            
-
-    
+                    if date.month == ScheduleDefinition._date_adjust(date, 'following',calendar).month:
+                        date = ScheduleDefinition._date_adjust(date, 'following',calendar)
+                    else:
+                        date = ScheduleDefinition._date_adjust(date, 'preceding',calendar)
+            return date
+        
     @staticmethod
-    def _timedelta(delta, period_length):
-        '''Private function to convert a number and string (eg -- 3, 'months') to
-        a dateutil relativedelta object
-        '''
-        if period_length == 'months':
-            return dateutil.relativedelta.relativedelta(months=delta)
-        elif period_length == 'weeks':
-            return dateutil.relativedelta.relativedelta(weeks=delta)
-        elif period_length == 'days':
-            return dateutil.relativedelta.relativedelta(days=delta)
-        else:
-            raise Exception('Period length "{period_length}" not '
-                            'recognized'.format(**locals()))
-
-    @staticmethod
-    def YearFraction(startDate, maturity, basis):
+    def YearFraction(startDate, maturity, basis, calendar = None):
         '''Static method to return the accrual length, as a decimal,
         between an effective and a maturity subject to a basis convention
 
@@ -227,9 +180,9 @@ class ScheduleDefinition():
                                                  30E360
 
         '''
-        startDate = ScheduleDefinition.DateConvert(startDate)
-        maturity = ScheduleDefinition.DateConvert(maturity)
-        if basis.lower() == 'act360':
+        startDate = ScheduleDefinition.DateConvert(startDate,calendar)
+        maturity = ScheduleDefinition.DateConvert(maturity,)
+        if basis.lower() == 'acton360':
             accrual_period = (maturity - startDate).days / 360
         elif basis.lower() == 'acton365f':
             accrual_period = (maturity - startDate).days / 365
@@ -258,40 +211,84 @@ class ScheduleDefinition():
         return periods
 
     @staticmethod
-    def DateConvert(date,valueDate=None):
-        if type(date) == datetime.datetime:
-            return date
-        elif type(date) == np.datetime64:
-            timestamp = date.astype('<M8[s]').astype(np.uint64)
-            return datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0, microsecond=0)
-        elif type(date) == int:
-            return datetime.fromordinal(datetime(1900, 1, 1).toordinal() + date - 2)
-        elif type(date) == str:
-            return ScheduleDefinition.ShiftDays(valueDate, date)
+    def DateConvert(dates,valueDate = None,calendar = None, adjustment = 'modified following'):
+        def _dateConvert(date, valueDate,adjustment,calendar):
+            if type(date) == datetime.datetime:
+                return date
+            elif type(date) == np.datetime64:
+                timestamp = date.astype('<M8[s]').astype(np.uint64)
+                return datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0, microsecond=0)
+            elif type(date) == int or type(date) == float:
+                return datetime.datetime.fromtimestamp((date - 25569) * 86400)
+            elif type(date) == str and 't' in date:
+                return ScheduleDefinition.ShiftDays(valueDate, date, adjustment, calendar)
+            else:
+                return pd.to_datetime(date)
+
+        if isinstance(dates,list) == True:
+            datesList =[]
+            for date in dates:
+                datesList.append(_dateConvert(date,valueDate,adjustment,calendar))
+            return datesList
         else:
-            return pd.to_datetime(date).to_pydatetime()
+            return _dateConvert(dates,valueDate,adjustment,calendar)
 
 
     @staticmethod
-    def ShiftDays(valueDate, tenors):
+    def ShiftDays(valueDate, tenors,adjustment,calendar):
         tenors = [x.strip() for x in tenors.split("+")[1:]]
         date = valueDate
         if not tenors:
             return valueDate
         for tenor in tenors:
-            if tenor.endswith('y'):
-                offset = int(tenor.replace('y',''))
-                date = pd.to_datetime(date) + dateutil.relativedelta.relativedelta(years=offset)
-            elif tenor.endswith('m'):
-                offset = int(tenor.replace('m',''))
-                date = pd.to_datetime(date) + dateutil.relativedelta.relativedelta(months=offset)
-            elif tenor.endswith('b'):
-                offset = int(tenor.replace('b',''))
-                date = pd.to_datetime(date) + pd.offsets.BusinessDay(offset)
-            elif tenor.endswith('d'):
-                offset = int(tenor.replace('d',''))
-                date = pd.to_datetime(date) + pd.offsets.DateOffset(offset)
+            date = pd.to_datetime(date) + ScheduleDefinition._parseDate(tenor)
+            date = ScheduleDefinition._date_adjust(date,adjustment,calendar)
+        return date
+
+    def _parseDate(period, valueDate = None, maturity = None):
+        if period is None:
+            raise Exception(f'{period} cannot be None')
+
+        if (period in EFrequency._member_names_):
+            if EFrequency[period] is EFrequency.Annual:
+                return pd.offsets.DateOffset(years=1)
+            elif EFrequency[period] is EFrequency.Monthly:
+                return pd.offsets.DateOffset(months=1)
+            elif EFrequency[period] is EFrequency.Quarterly:
+                return pd.offsets.DateOffset(months=3)
+            elif EFrequency[period] is EFrequency.SemiAnnual:
+                return pd.offsets.DateOffset(months=6)
+            elif EFrequency[period] is EFrequency.Zero and valueDate is not None and maturity is not None:
+                return maturity - valueDate
             else:
-                raise Exception('Cannot parse the date')
-        return date.to_pydatetime()
+                return pd.offsets.DateOffset(months=0)
+
+        if isinstance(period,str):
+            period = period.lower();
+            period = period.replace(" ", "");
+            period = period.replace("\t", "");
+            period = period.replace("years", "y");
+            period = period.replace("year", "y");
+            period = period.replace("months", "m");
+            period = period.replace("month", "m");
+            period = period.replace("businessdays", "b");
+            period = period.replace("businessday", "b");
+            period = period.replace("bd", "b");
+            period = period.replace("days", "d");
+            period = period.replace("day", "d");
+
+        if period.endswith('y'):
+            offset = int(period.replace('y',''))
+            return pd.offsets.DateOffset(years=offset)
+        elif period.endswith('m'):
+            offset = int(period.replace('m',''))
+            return pd.offsets.DateOffset(months=offset)
+        elif period.endswith('b'):
+            offset = int(period.replace('b',''))
+            return pd.offsets.BusinessDay(offset)
+        elif period.endswith('d'):
+            offset = int(period.replace('d',''))
+            return pd.offsets.DateOffset(offset)
+        else:
+            raise Exception (f'{period} date type is not defined')
 

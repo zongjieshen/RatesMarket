@@ -5,7 +5,7 @@ import math
 
 class Rate():
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                 yearBasis, rate, paymentFrequency):
+                 yearBasis, rate, paymentFrequency, calendar):
         self.startDate = startDate
         self.maturityDate = maturityDate
         self.ccy = ccy
@@ -14,7 +14,7 @@ class Rate():
         self.yearBasis = yearBasis
         self.rate = rate
         self.paymentFrequency = paymentFrequency
-
+        self.calendar = calendar
 
 
     @classmethod
@@ -34,16 +34,17 @@ class BondQuote(Rate):
 
 class BondYield(BondQuote):
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,coupon):
+                   yearBasis, rate, paymentFrequency,calendar, coupon):
         super(BondYield, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency)
+                   yearBasis, rate, paymentFrequency, calendar)
         self.quoteType='BondYield'
         self.coupon = coupon
 
     @classmethod
     def fromRow(cls, row, bondType, valueDate):
-        startDate = Dates.ScheduleDefinition.DateConvert(row["StartDate"], valueDate)
-        maturityDate = Dates.ScheduleDefinition.DateConvert(row["Maturity"], valueDate)
+        calendar = row["Calendar"]
+        startDate = Dates.ScheduleDefinition.DateConvert(row["StartDate"], valueDate,calendar)
+        maturityDate = Dates.ScheduleDefinition.DateConvert(row["Maturity"], valueDate,calendar)
         ccy = row["Currency"]
         label = row["Label"]
         rateConvention = row["RateConvention"]
@@ -52,7 +53,7 @@ class BondYield(BondQuote):
         paymentFrequency = row["PaymentFrequency"]
         coupon = row["Coupon"]
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,coupon)
+                   yearBasis, rate, paymentFrequency, calendar,coupon)
 
 
 #Deposit Rate
@@ -63,8 +64,9 @@ class DepositRate(Rate):
 
     @classmethod
     def fromRow(cls, row, valueDate):
-        startDate = Dates.ScheduleDefinition.DateConvert(row["StartDate"], valueDate)
-        maturityDate = Dates.ScheduleDefinition.DateConvert(row["Maturity"], valueDate)
+        calendar = row["Calendar"]
+        startDate = Dates.ScheduleDefinition.DateConvert(row["StartDate"], valueDate,calendar)
+        maturityDate = Dates.ScheduleDefinition.DateConvert(row["Maturity"], valueDate,calendar)
         ccy = row["Currency"]
         label = row["Label"]
         rateConvention = row["RateConvention"]
@@ -72,7 +74,7 @@ class DepositRate(Rate):
         rate = row["Value"]
         paymentFrequency = row["PaymentFrequency"]
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency)
+                   yearBasis, rate, paymentFrequency, calendar)
 
 
 #Discount Factor
@@ -84,24 +86,29 @@ class DiscountFactorRate():
 
 #SwapRate
 class SwapRate(Rate):
-    def __init__(self, *args, **kwargs):
-        super(SwapRate, self).__init__(*args, **kwargs)
-
+    def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
+                   yearBasis, rate, paymentFrequency,calendar,compoundFrequency,paymentDelay):
+        super(SwapRate, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
+                   yearBasis, rate, paymentFrequency,calendar)
+        self.compoundFrequency = compoundFrequency
+        self.paymentDelay = paymentDelay
+        self.quoteType = 'SwapRate'
 
     @classmethod
     def fromRow(cls, row, valueDate):
-        startDate = Dates.ScheduleDefinition.DateConvert(row["StartDate"], valueDate)
-        maturityDate = Dates.ScheduleDefinition.DateConvert(row["Maturity"], valueDate)
+        calendar = row["Calendar"]
+        startDate = Dates.ScheduleDefinition.DateConvert(row["StartDate"], valueDate, calendar)
+        maturityDate = Dates.ScheduleDefinition.DateConvert(row["Maturity"], valueDate, calendar)
         ccy = row["Currency"]
         label = row["Label"]
         rateConvention = row["RateConvention"]
         yearBasis = row["YearBasis"]
         rate = row["Value"]
         paymentFrequency = row["PaymentFrequency"]
-        cls.compoundFrequency = row['CompoundingFrequency']
-        cls.paymentDelay = row["PaymentDelay"]
+        compoundFrequency = row['CompoundingFrequency']
+        paymentDelay = row["PaymentDelay"]
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency)
+                   yearBasis, rate, paymentFrequency,calendar,compoundFrequency,paymentDelay)
 
 
 

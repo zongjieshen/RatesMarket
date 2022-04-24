@@ -2,12 +2,12 @@ from Market.Dates import *
 from Market.Pillars import *
 import scipy.interpolate
 import scipy.optimize
-import sys
+import pandas as pd
 import time
 import copy
 
 class Instrument(object):
-    def __init__(self, quote):
+    def __init__(self, quote,periodAdjustment = 'modified following',paymentAdjustment = 'modified following'):
         self.key = quote.label
         self.ccy = quote.ccy
         self.yearBasis = quote.yearBasis
@@ -15,6 +15,11 @@ class Instrument(object):
         self.startDate = quote.startDate
         self.maturity = quote.maturityDate
         self.rate = quote.rate
+        self.calendar = quote.calendar
+
+        self.schedule = Schedule(self.startDate,self.maturity,
+                                 quote.paymentFrequency,periodAdjustment,paymentAdjustment,self.calendar)
+        self.schedule._create_schedule()
         
 
     def SolveDf():
@@ -31,7 +36,13 @@ class Instrument(object):
                                           time.mktime(self.maturity.timetuple()),
                                           guess)],
                                         dtype=self.curve.points.dtype))
-        return temp_curve
+
+        if self.market is not None and self.curve.discountCurve != '' and self.market.GetMarketItem(self.curve.discountCurve)._built == True:
+            discountCurve = self.market.GetMarketItem(self.curve.discountCurve)
+        else:
+            discountCurve = temp_curve
+
+        return temp_curve, discountCurve
 
 #Discount Factor
 class DiscountFactor(Instrument):
@@ -47,8 +58,6 @@ class Deposit(Instrument):
         super(Deposit, self).__init__(quote)
         self.curve = curve
         self.notional = notional
-        self.schedule = Schedule(self.startDate,self.maturity,
-                                 quote.paymentFrequency,'modified following','modified following')
 
     def SolveDf(self):
         yearFraction = ScheduleDefinition.YearFraction(self.startDate,self.maturity,self.yearBasis)
@@ -71,19 +80,18 @@ class Deposit(Instrument):
                               'fixed',self.yearBasis,projectCurve,discountCurve).pv()
 
 class Bond(Instrument):
-    def __init__(self, quote, curve, notional =1):
+    def __init__(self, quote, curve, market = None, notional =1):
         super(Bond, self).__init__(quote)
         self.portfolio = 'curve'
         self.subType = 'Fixed'
         self.coupon = quote.coupon
         self.notional = notional
         self.exDivDays = 7
-        self.schedule = Schedule(self.startDate,self.maturity,
-                                 quote.paymentFrequency,'modified following','modified following')
-        self.curve = curve
+        self.market = market
         #overwrite the bond start date with last coupon date
         prevCoupnDate = self._prevCouponDate(self.schedule.periods[0]['accrual_end'])
         self.schedule.periods[0]['accrual_start'] = np.datetime64(prevCoupnDate.strftime('%Y-%m-%d'))
+        self.curve = curve
 
     def SolveDf(self):
         yearFraction = ScheduleDefinition.YearFraction(self.startDate,self.maturity,self.yearBasis)
@@ -95,10 +103,9 @@ class Bond(Instrument):
         if not isinstance(guess, (int, float, complex)):
             guess = guess[0]
 
-        temp_curve = self._copy(guess)
-        discount_curve = self.curve.discountCurve if self.curve.discountCurve is not False else temp_curve
+        temp_curve, discountCurve = self._copy(guess)
 
-        pv = self.Valuation(temp_curve,discount_curve)
+        pv = self.Valuation(temp_curve,discountCurve)
         targetPv = self.DirtyPrice()
         return pv - targetPv
 
@@ -127,24 +134,23 @@ class Bond(Instrument):
         return price / 100 * self.notional
 
     def _prevCouponDate(self,thisCouponDate):
-        return ScheduleDefinition.DateConvert(thisCouponDate) - self.schedule.period_delta
+        return ScheduleDefinition.DateConvert(thisCouponDate) - ScheduleDefinition._parseDate(self.schedule.period)
 
     def isExDiv(self,nextCouponDate, startDate,exDivDays):
-        exDiv = dateutil.relativedelta.relativedelta(days=exDivDays)
+        exDiv = pd.offsets.DateOffset(exDivDays)
         return nextCouponDate + exDiv <= startDate
 
 
 class Swap(Instrument):
-    def __init__(self, quote, curve, notional =1):
+    def __init__(self, quote, curve, market = None, notional =1):
         super(Swap, self).__init__(quote)
         self.portfolio = 'curve'
         self.subType = 'vanilla'
         self.notional = notional
         self.paymentDelay = quote.paymentDelay
         #TODO add paymentDelay to schedule
-        self.schedule = Schedule(self.startDate,self.maturity,
-                                 quote.paymentFrequency,'modified following','modified following')
         self.curve = curve
+        self.market = market
         self.compoundFrequency = quote.compoundFrequency
 
     def SolveDf(self):
@@ -157,10 +163,8 @@ class Swap(Instrument):
         if not isinstance(guess, (int, float, complex)):
             guess = guess[0]
 
-        temp_curve = self._copy(guess)
-        discount_curve = self.curve.discountCurve if self.curve.discountCurve is not False else temp_curve
-
-        return self.Valuation(temp_curve, discount_curve)
+        temp_curve, discountCurve = self._copy(guess)
+        return self.Valuation(temp_curve, discountCurve)
 
     def Valuation(self, projectCurve, discountCurve):
         fixedLegPv = DiscountCashFlow(self.ccy,self.schedule,self.notional,self.rate,
@@ -204,7 +208,7 @@ class DiscountCashFlow():
             cashflows = fwd * self.notional
         elif self.indexType.lower() == 'ois':
             cashflows =[]
-            for idx, period in enumerate(self.schedule.periods):
+            for period in self.schedule.periods:
                 fwd = self.__ois_fwd_rate(self.projectCurve, period)
                 cashflows.append(fwd * self.notional)
         else:
@@ -232,14 +236,6 @@ class DiscountCashFlow():
         rate (+ 1) for the entire date array, and then calculating the product
         of the array. Additionally, there are 3 entries for every Friday, as
         each friday should compound 3 times (no new rates on weekends).
-
-        Arguments:
-            interpolator (scipy.interpolate):   temporary interpolator object
-                                                that includes the current swap
-                                                maturity guess discount factor.
-            period (np.recarray)            :   1 line of the swapschedule array
-                                                must contain the accrual start
-                                                and end dates
         '''
         start_date = period['accrual_start'].astype('<M8[s]')
         end_date = period['accrual_end'].astype('<M8[s]')

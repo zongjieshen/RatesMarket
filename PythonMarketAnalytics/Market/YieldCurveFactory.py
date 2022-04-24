@@ -47,9 +47,9 @@ class YieldCurveFactory:
         if isinstance(pillar,mkt.DepositRate):
             return mkt.Deposit(pillar,curve,notional)
         elif isinstance(pillar,mkt.BondQuote):
-            return mkt.Bond(pillar,curve,notional)
+            return mkt.Bond(pillar,curve, None,notional)
         elif isinstance(pillar,mkt.SwapRate):
-            return mkt.Swap(pillar,curve,notional)
+            return mkt.Swap(pillar,curve, None,notional)
         else:
             raise Exception('"{typeof(pillar)}" cannot be converted to asset')
 
