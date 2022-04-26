@@ -19,29 +19,34 @@ class YieldCurveFactory:
 
     def _ycCreate(df, key, ccy, discountCurve, valueDate):
         pillars = []
-        for index, row in df.iterrows():
-            pillarType = row['ValueType']
-            if pillarType in ['Df',np.nan,'DiscountFactor']:
-                pass
-            elif pillarType == 'DepositRate':
-                pillar = mkt.DepositRate.fromRow(row, valueDate)
-                pillars.append(pillar)
-            elif pillarType == 'SwapRate':
-                pillar = mkt.SwapRate.fromRow(row, valueDate)
-                pillars.append(pillar)
-            elif pillarType == 'BasisSwap':
-                pillar = mkt.BasisSwapRate.fromRow(row, valueDate)
-                pillars.append(pillar)
-            elif pillarType == 'BondYield':
-                pillar = mkt.BondYield.fromRow(row, 'Fixed', valueDate)
-                if pillar.maturityDate - pillar.startDate > datetime.timedelta(days=15):
+        try:
+            for index, row in df.iterrows():
+                pillarType = row['ValueType']
+                if pillarType in ['Df',np.nan,'DiscountFactor']:
+                    pass
+                elif pillarType == 'DepositRate':
+                    pillar = mkt.DepositRate.fromRow(row, valueDate)
                     pillars.append(pillar)
-            elif pillarType == 'BondPrice':
-                pass
-        #Remove overdue pillars
-        for pillar in pillars:
-            if pillar.maturityDate < valueDate:
-                pillars.remove(pillar)
+                elif pillarType == 'SwapRate':
+                    pillar = mkt.SwapRate.fromRow(row, valueDate)
+                    pillars.append(pillar)
+                elif pillarType == 'BasisSwap':
+                    pillar = mkt.BasisSwapRate.fromRow(row, valueDate)
+                    pillars.append(pillar)
+                elif pillarType == 'BondYield':
+                    pillar = mkt.BondYield.fromRow(row, 'Fixed', valueDate)
+                    if pillar.maturityDate - pillar.startDate > datetime.timedelta(days=15):
+                        pillars.append(pillar)
+                elif pillarType == 'BondPrice':
+                    pass
+            #Remove overdue pillars and check pillars falling on same maturity date causing convergence error
+            for pillar in pillars:
+                if pillar.maturityDate < valueDate:
+                    pillars.remove(pillar)
+                if sum(p.maturityDate == pillar.maturityDate for p in pillars) > 1:
+                    print(f'{pillar.label} {pillar.maturityDate} has another pillar having the same maturity')
+        except Exception as exp:
+            raise Exception(exp)
 
         return mkt.YieldCurve(key,valueDate,ccy,pillars,discountCurve)
 
@@ -54,6 +59,6 @@ class YieldCurveFactory:
         elif isinstance(pillar,mkt.SwapRate):
             return mkt.Swap(pillar,curve, None,notional)
         else:
-            raise Exception('"{typeof(pillar)}" cannot be converted to asset')
+            raise Exception(f'{typeof(pillar)} cannot be converted to asset')
 
 

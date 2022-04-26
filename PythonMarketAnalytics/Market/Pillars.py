@@ -2,6 +2,7 @@ import Market.Dates as Dates
 import pandas as pd
 import numpy as np
 import math
+import abc
 
 class Rate():
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
@@ -17,7 +18,7 @@ class Rate():
         self.calendar = calendar
 
 
-    @classmethod
+    @abc.abstractmethod
     def fromRow():
         return NotImplementedError
 
@@ -34,11 +35,13 @@ class BondQuote(Rate):
 
 class BondYield(BondQuote):
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,calendar, coupon):
+                   yearBasis, rate, paymentFrequency,calendar, coupon, bondType, notionalIndexation):
         super(BondYield, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
                    yearBasis, rate, paymentFrequency, calendar)
         self.quoteType='BondYield'
         self.coupon = coupon
+        self.bondType = bondType
+        self.notionalIndexation = notionalIndexation
 
     @classmethod
     def fromRow(cls, row, bondType, valueDate):
@@ -52,8 +55,12 @@ class BondYield(BondQuote):
         rate = row["Value"]
         paymentFrequency = row["PaymentFrequency"]
         coupon = row["Coupon"]
+        notionalIndexation = row['NotionalIndexation'] if 'NotionalIndexation' in row else ''
+
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, calendar,coupon)
+                   yearBasis, rate, paymentFrequency, calendar,coupon, bondType, notionalIndexation)
+
+#Capital Indexed Bond
 
 
 #Deposit Rate
@@ -77,12 +84,7 @@ class DepositRate(Rate):
                    yearBasis, rate, paymentFrequency, calendar)
 
 
-#Discount Factor
-class DiscountFactorRate():
-    def __init__(self, maturityDate, value):
-        self.quoteType = 'DiscountFactor'
-        self.maturityDate = maturityDate
-        self.value = value
+
 
 #SwapRate
 class SwapRate(Rate):
@@ -116,9 +118,27 @@ class BasisSwapRate(SwapRate):
         self.quoteType = 'BasisSwapRate'
 
 
+#base class
+class Factor():
+    def __init__(self, maturityDate, value):
+        self.maturityDate = maturityDate
+        self.value = value
+#Discount Factor
+class DiscountFactorRate(Factor):
+    def __init__(self, *args, **kwargs):
+        super(DiscountFactorRate, self).__init__(*args, **kwargs)
+        self.quoteType = 'DiscountFactor'
 
+class FixingRate(Factor):
+    def __init__(self, *args, **kwargs):
+        super(FixingRate, self).__init__(*args, **kwargs)
+        self.quoteType = 'IndexFixing'
 
-
+    @classmethod
+    def fromRow(cls, row):
+        Date = Dates.ScheduleDefinition.DateConvert(row["Date"])
+        value = row["Value"]
+        return cls(Date, value)
 
 
 

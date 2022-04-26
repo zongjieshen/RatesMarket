@@ -3,8 +3,6 @@
 from calendar import calendar
 import holidays
 import datetime
-
-from pandas.core.algorithms import value_counts
 import numpy as np
 import pandas as pd
 from enum import Enum
@@ -98,8 +96,6 @@ class Schedule:
                                                 ('PV', np.float64)])
 
 
-
-
     def _gen_dates(self, adjustment, calendar = 'DEFAULT'):
         '''Private function to backward generate a series of dates starting
         from the maturity to the valueDate.
@@ -143,6 +139,11 @@ class Schedule:
         return tuple(arrays)
 
 class ScheduleDefinition():
+    @staticmethod
+    def EndOfMonthAdj(date, lag):
+        date = date + pd.offsets.QuarterEnd(0) + pd.offsets.DateOffset(months = lag)
+        return date + pd.offsets.QuarterEnd(0)
+
 
     @staticmethod
     def _date_adjust(date, adjustment,calendar):
@@ -213,11 +214,9 @@ class ScheduleDefinition():
     @staticmethod
     def DateConvert(dates,valueDate = None,calendar = None, adjustment = 'modified following'):
         def _dateConvert(date, valueDate,adjustment,calendar):
-            if type(date) == datetime.datetime:
-                return date
-            elif type(date) == np.datetime64:
+            if type(date) == np.datetime64:
                 timestamp = date.astype('<M8[s]').astype(np.uint64)
-                return datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0, microsecond=0)
+                return pd.to_datetime(datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0, microsecond=0))
             elif type(date) == int or type(date) == float:
                 return datetime.datetime.fromtimestamp((date - 25569) * 86400)
             elif type(date) == str and 't' in date:

@@ -12,5 +12,6 @@ setup(
             'scipy',
             'numpy',
             'blas',
+            'holidays',
             ],
      )
