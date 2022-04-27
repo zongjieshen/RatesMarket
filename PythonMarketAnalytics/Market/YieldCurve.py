@@ -40,7 +40,7 @@ class YieldCurve(Curve):
             baseNpv = YieldCurveFactory.ToAssets(pillar,baseYc,notional).Valuation(baseYc,baseYc)
             shockedNpv = YieldCurveFactory.ToAssets(pillar,shockedYc,notional).Valuation(shockedYc,shockedYc)
             result[pillar.label] = (shockedNpv-baseNpv)/(shockAmount * 10000)
-        return pd.DataFrame(list(result.items()),columns= ['Pillar','Amount'])
+        return pd.DataFrame(list(result.items()),columns= ['Pillar','Delta'])
 
     #Zero Shock
     def ShiftZero(self,shockAmount, pillarToShock = -1):
@@ -70,6 +70,7 @@ class YieldCurve(Curve):
                     pillar.Shock(shockAmount)
             shockedYc = YieldCurve(shiftedKey,self.valueDate,self.ccy,
                           shiftedPillars,self.discountCurve)
+        #TODO: Add Market to pass in DiscountCurve
         shockedYc.Build()
 
         return shockedYc

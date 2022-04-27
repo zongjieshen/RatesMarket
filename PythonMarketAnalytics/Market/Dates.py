@@ -1,7 +1,5 @@
-#! /usr/bin/env python
-# vim: set fileencoding=utf-8
-from calendar import calendar
 import holidays
+import calendar
 import datetime
 import numpy as np
 import pandas as pd
@@ -199,6 +197,8 @@ class ScheduleDefinition():
             accrual_period = (years + months + start + end) / 360
         elif basis.lower() == 'equalcoupons':
             accrual_period = maturity.year - startDate.year + (maturity.month - startDate.month)/12
+        elif basis.lower() == 'actonact':
+            accrual_period = (maturity - startDate).days / (365 + calendar.isleap(startDate.year))
         else:
             raise Exception('Accrual basis "{basis}" '
                             'not recognized'.format(**locals()))

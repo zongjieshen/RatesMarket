@@ -3,13 +3,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>876bc226-ff26-42f8-ad4d-137ca87e54ac</ProjectGuid>
-    <ProjectHome>.</ProjectHome>
-    <StartupFile>PythonMarketAnalytics.py</StartupFile>
+    <ProjectHome>
+    </ProjectHome>
+    <StartupFile>MarketAddin.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>PythonMarketAnalytics</Name>
+    <Name>MarketAnalytics</Name>
     <RootNamespace>PythonMarketAnalytics</RootNamespace>
     <InterpreterId>Global|ContinuumAnalytics|Anaconda38-64</InterpreterId>
   </PropertyGroup>
@@ -22,10 +23,12 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Market\Curve.py" />
+    <Compile Include="Market\IndexFixing.py" />
+    <Compile Include="Market\IndexFixingFactory.py" />
+    <Compile Include="Market\InflationCurve.py" />
+    <Compile Include="Market\InflationCurveFactory.py" />
     <Compile Include="Market\MarketAddin.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Market\DashBoard.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Market\YieldCurveFactory.py">
@@ -52,19 +55,19 @@
     <Compile Include="setup.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="PythonMarketAnalytics.py" />
+    <Compile Include="MarketAddin.py" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda38-64" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include=".ipynb_checkpoints\" />
     <Folder Include="Market\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include=".ipynb_checkpoints\Untitled-checkpoint.ipynb" />
-    <Content Include="Market\BondYield.xlsx" />
+    <Content Include="Market Notebook.ipynb" />
     <Content Include="Market\MarketAddin.xlsm" />
+    <Content Include="Market\MarketData.xlsx" />
+    <Content Include="MarketAddin.xlsm" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

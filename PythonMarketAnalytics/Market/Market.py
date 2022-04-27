@@ -1,14 +1,14 @@
 import pandas as pd
 import Market as mkt
-import operator
-import multiprocessing as mp                                               
+import multiprocessing as mp   
+from pathlib import Path
 
 
 class Market():
     def __init__(self, handleName, valueDate, filePath):
         self.handleName = handleName
         self.valueDate = mkt.ScheduleDefinition.DateConvert(valueDate)
-        self._itemsToBuild = MarketDataManager.baseMarket()
+        
         self.marketItems = {}
     def worker(arg):
         obj, market = arg
@@ -46,13 +46,9 @@ class Market():
 
         for marketItem in sortedMarketList:
            marketItem.Build(self)
+           print(f'{marketItem.key} build status is {marketItem._built}')
 
         
-
-
-
-
-
 
 
     def GetItems(self):
@@ -84,12 +80,18 @@ class Market():
             
 class MarketFactory():
     @staticmethod
-    def Create(handleName, valueDate, filePath):
-        #TODO: Change file path
+    def Create(handleName, valueDate, filePath = None, buildItems = None):
+        if filePath is None:
+            filePath = Path(__file__).parent/"MarketData.xlsx"
         ycDf=pd.read_excel(filePath,sheet_name='YieldCurve')
         icDf=pd.read_excel(filePath,sheet_name='InflationCurve')
         ifDf = pd.read_excel(filePath,sheet_name='IndexFixing')
         market = Market(handleName, valueDate, filePath)
+        if buildItems is None:
+            market._itemsToBuild = MarketDataManager.baseMarket()
+        else:
+            market._itemsToBuild = MarketDataManager.FromExcelArray(buildItems)
+
         for item in market._itemsToBuild:
             itemType = item.itemType
             if item.build == False or not item.label:
@@ -135,6 +137,15 @@ class MarketDataManager():
         itemsToBuild = [audSwap3mItem,audSwap6mItem,audSwap1mItem,audSwapItem,gbpOisItem,jpyOisItem,bondCurveItem,auCPI,beiCurve]
 
         return itemsToBuild
+
+    def FromExcelArray(dt):
+        buildItems =[]
+        for index, row in dt.iterrows():
+            item = ItemToBuild(row['Build'],row['CurveType'],
+                               row['Label'],row['Filter'],row['Ccy'],
+                               row['DiscountCurve'],row['IndexFixingKey'])
+            buildItems.append(item)
+        return buildItems
 
 
 class ItemToBuild():

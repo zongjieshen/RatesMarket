@@ -13,5 +13,7 @@ setup(
             'numpy',
             'blas',
             'holidays',
+            'Enum',
+            'calendar'
             ],
      )

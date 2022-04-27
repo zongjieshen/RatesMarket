@@ -14,7 +14,7 @@ class Curve():
         self.ccy = ccy
         self.valueDate = valueDate
         #Add property to check if discountCurve exists in Market
-        self.discountCurve = discountCurve if discountCurve !='' else key
+        self.discountCurve = discountCurve if discountCurve !='' and discountCurve is not None else key
         self._built = False
         self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
                                 time.mktime(self.valueDate.timetuple()),
