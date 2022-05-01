@@ -74,7 +74,7 @@ class Market():
             return Exception (f'{curveKey} does not exist in the Market {self.handlename}')
 
     def YcShock(self,ycKey,shockType,shockAmount,pillarToShock=-1):
-        shockedYc = self.marketItems[ycKey].CreateShockedCurve(shockType,shockAmount,pillarToShock)
+        shockedYc = self.marketItems[ycKey].CreateShockedCurve(shockType,shockAmount,pillarToShock,self)
         self.AddorUpdateItem(shockedYc)
 
             
@@ -135,7 +135,7 @@ class MarketDataManager():
         beiCurve = ItemToBuild(True,'InflationCurve','AUD.Bond.Gov.BEI',beiCurveFilters,'AUD','AUDBondGov','AUCPI')
 
         itemsToBuild = [audSwap3mItem,audSwap6mItem,audSwap1mItem,audSwapItem,gbpOisItem,jpyOisItem,bondCurveItem,auCPI,beiCurve]
-
+        #itemsToBuild = [audSwapItem]
         return itemsToBuild
 
     def FromExcelArray(dt):

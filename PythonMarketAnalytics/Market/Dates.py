@@ -37,48 +37,39 @@ class Schedule:
     adjustments ={'unadjusted','following','modified following','preceding'}
 
     def __init__(self, valueDate, maturity,frequency,
-                 period_adjustment='unadjusted',
-                 payment_adjustment='unadjusted',
+                 adjustment='unadjusted',
                  calendar = 'SYD'):
 
         # variable assignment
         self.valueDate = valueDate
         self.maturity = maturity
         self.period = frequency
-        self.period_adjustment = period_adjustment
-        self.payment_adjustment = payment_adjustment
+        self.adjustment = adjustment
         self.calendar = calendar
 
         if frequency in EFrequency._member_names_:
             self.couponPerAnnum = EFrequency[frequency].value
     
-    @property
-    def period_adjustment(self):
-        return self._period_adjustment
-    @period_adjustment.setter
-    def period_adjustment(self,period_adjustment):
-        if period_adjustment not in self.adjustments:
-            raise ValueError(f"Invalid adjustment {period_adjustment} defined")
-        self._period_adjustment = period_adjustment
 
     @property
-    def payment_adjustment(self):
-        return self._payment_adjustment
-    @payment_adjustment.setter
-    def payment_adjustment(self,payment_adjustment):
-        if payment_adjustment not in self.adjustments:
-            raise ValueError(f"Invalid adjustment {payment_adjustment} defined")
-        self._payment_adjustment = payment_adjustment
+    def adjustment(self):
+        return self._adjustment
+
+    @adjustment.setter
+    def adjustment(self,adjustment):
+        if adjustment not in self.adjustments:
+            raise ValueError(f"Invalid adjustment {adjustment} defined")
+        self._adjustment = adjustment
 
 
 
     def _create_schedule(self):
         '''Private function to merge the lists of periods to a np recarray
         '''
-        self._period_starts = [self.valueDate] + self._gen_dates(self.period_adjustment,self.calendar)[:-1]
-        self._adjusted_period_ends = self._gen_dates(self.period_adjustment,self.calendar)
-        self._fixing_dates = self._gen_date_adjustments(self._adjusted_period_ends,self.period_adjustment,self.calendar)
-        self._payment_dates = self._gen_dates(self.payment_adjustment,self.calendar)
+        self._period_starts = [self.valueDate] + self._gen_dates()[:-1]
+        self._adjusted_period_ends = self._gen_dates()
+        self._fixing_dates = self._gen_date_adjustments(self._adjusted_period_ends)
+        self._payment_dates = self._gen_dates()
 
         arrays = self._np_dtarrays(self._fixing_dates, self._period_starts,
                                    self._adjusted_period_ends,
@@ -94,7 +85,7 @@ class Schedule:
                                                 ('PV', np.float64)])
 
 
-    def _gen_dates(self, adjustment, calendar = 'DEFAULT'):
+    def _gen_dates(self):
         '''Private function to backward generate a series of dates starting
         from the maturity to the valueDate.
 
@@ -110,19 +101,19 @@ class Schedule:
             counter += 1
             current = self.maturity - (delta * counter)
 
-        adjustedDates = self._gen_date_adjustments(dates[::-1],adjustment,calendar)
+        adjustedDates = self._gen_date_adjustments(dates[::-1])
 
         return adjustedDates
 
 
-    def _gen_date_adjustments(self, dates, adjustment, calendar):
+    def _gen_date_adjustments(self, dates):
         '''Private function to take a list of dates and adjust each for a number
         of days. It will also adjust each date for a business day adjustment if
         requested.
         '''
         adjusted_dates = []
         for date in dates:
-            adjusted_date = ScheduleDefinition._date_adjust(date, adjustment,calendar)
+            adjusted_date = ScheduleDefinition._date_adjust(date, self.adjustment,self.calendar)
             adjusted_dates.append(adjusted_date)
         return adjusted_dates
 
@@ -168,16 +159,6 @@ class ScheduleDefinition():
     def YearFraction(startDate, maturity, basis, calendar = None):
         '''Static method to return the accrual length, as a decimal,
         between an effective and a maturity subject to a basis convention
-
-        Arguments:
-            effective (datetime)    : First day of the accrual period
-            maturity (datetime)     : Last day of the accrual period
-            basis (str)             : Basis convention
-                                      available: Act360,
-                                                 Act365,
-                                                 30360,
-                                                 30E360
-
         '''
         startDate = ScheduleDefinition.DateConvert(startDate,calendar)
         maturity = ScheduleDefinition.DateConvert(maturity,)

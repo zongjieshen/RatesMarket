@@ -79,22 +79,29 @@ class Curve():
         return dt
 
     def SwapRates(self,dates, tenor, yearBasis = 'acton365f', rateConvention = 'linear'):
+        def _sumproduct(date):
+                schedule = mkt.Schedule(self.valueDate,date,tenor,'modified following')
+                schedule._create_schedule()
+                periodStart = schedule.periods['accrual_start']
+                periodEnd  = schedule.periods['accrual_end']
+                yearFractions = ScheduleDefinition.YearFractionList(periodStart,periodEnd,yearBasis)
+                dfs = self.DiscountFactor(periodStart)
+                return np.sum(np.multiply(dfs, yearFractions))
 
         if isinstance(dates, list) == False:
             dates =[dates]
-        endDates = [x + ScheduleDefinition._parseDate(tenor) for x in dates]
-        startDates = [self.valueDate] * len(dates)
-        dcf = self.DiscountFactor(startDates) - self.DiscountFactor(dates)
-        yearFractions = ScheduleDefinition.YearFractionList(dates,endDates,yearBasis)
-        schedules = [mkt.Schedule(self.valueDate,date,tenor,'modified following','modified following')._gen_dates('modified following') for date in dates]
-        cumDcf = [self.DiscountFactor(schedule) for schedule in schedules]
-        sumProducts = np.asarray([np.sum(date) for date in np.multiply(cumDcf, yearFractions)])
-        swapRates = np.divide(dcf, sumProducts)
+        swapRates = []
+        for date in dates:
+            if date == self.valueDate:
+                continue
+            dcf = self.DiscountFactor(self.valueDate) - self.DiscountFactor(date)
+            sumProduct = _sumproduct(date)
+            swapRate = np.divide(dcf, sumProduct)
+            swapRates.append(swapRate.flat[0])
         dt = pd.DataFrame(list(zip(dates,swapRates)),columns =['Dates', f'{self.key}.SwapRates'])
         dt.set_index('Dates',inplace=True)
         return dt
 
-    
     @staticmethod
     def Charts(curves, returnType, dates, tenor = '+3m',yearBasis = 'acton365f', rateConvention = 'linear'):
         if isinstance(curves, list) == False:
@@ -104,11 +111,11 @@ class Curve():
         for curve in curves:
             if isinstance(curve, IndexFixing) == True:
                 continue
-            if returnType.lower() == 'zero':
+            if returnType.lower().startswith ('zero'):
                 charts.append(curve.ZeroRates(dates, yearBasis, rateConvention))
-            elif returnType.lower() == 'fwd':
+            elif returnType.lower().startswith('fwd'):
                 charts.append(curve.FwdRates(dates, tenor, yearBasis, rateConvention))
-            elif returnType.lower() == 'swaprates':
+            elif returnType.lower().startswith ('swaprate'):
                 charts.append(curve.SwapRates(dates, tenor, yearBasis, rateConvention))
             else:
                 charts.append(curve.DiscountFactor(dates,True))
@@ -132,18 +139,16 @@ class Curve():
             return maturities, discount_factors
 
     def _addInstruments(self, market):
-        instruments =[]
         for pillar in self.pillars:
             if pillar.quoteType == 'BondYield' and pillar.bondType.lower() == 'fixed':
-                instruments.append(Bond(pillar, self, market))
+                yield (Bond(pillar, self, market))
             elif pillar.quoteType == 'BondYield' and pillar.bondType.lower() == 'capitalindexed':
-                instruments.append(IndexedBond(pillar, self, market))
+                 yield (IndexedBond(pillar, self, market))
             elif pillar.quoteType == 'DiscountFactor':
-                instruments.append(DiscountFactor(pillar))
+                yield (DiscountFactor(pillar))
             elif pillar.quoteType == 'DepositRate':
-                instruments.append(Deposit(pillar, self, market))
+                yield (Deposit(pillar, self, market))
             elif pillar.quoteType == 'SwapRate':
-                instruments.append(Swap(pillar, self, market))
+                yield (Swap(pillar, self, market))
             elif pillar.quoteType == 'BasisSwapRate':
-                instruments.append(BasisSwap(pillar, self, market))
-        return instruments
+                yield (BasisSwap(pillar, self, market))

@@ -1,14 +1,21 @@
 import pandas as pd
 import Market as mkt
 import xlwings as xw
+import dateutil.relativedelta 
 
 Handles ={}
 if __name__ == '__main__':
-    #valueDate = pd.to_datetime('31/12/2021')
-    #baseMarket = mkt.MarketFactory.Create('baseMarket',valueDate)
-    #curve = baseMarket.marketItems['AUDSwap']
+    valueDate = pd.to_datetime('31/12/2021')
+    baseMarket = mkt.MarketFactory.Create('baseMarket',valueDate)
+    curve = baseMarket.marketItems['AUDSwap']
     #aud3mcurve = baseMarket.marketItems['AUDSwap3m']
-    #curve.view()
+    curve.Dv01MatrixAtEachPillar('pillar',baseMarket)
+   # baseMarket.YcShock('AUDSwap3m','pillar',0.0001)
+    swapdate = pd.to_datetime('31/12/2021')
+    date_list = [swapdate + dateutil.relativedelta.relativedelta(months=3*x) for x in range(10)] 
+    test =  mkt.Curve.Charts(curve, 'swaprates', date_list,'3m')
+    print(test)
+    curve.view()
     #aud3mcurve.view()
     xw.serve()
 
@@ -29,11 +36,11 @@ def GetHandle():
 
 @xw.func
 @xw.ret(index=False, header=True, expand='table')
-def ScheduleCreate(valueDate, maturity, period,adjustments = 'unadjusted',calendar=None):
+def ScheduleCreate(valueDate, maturity, period, adjustments = 'unadjusted',calendar=None):
     valueDate = pd.to_datetime(valueDate)
     maturity = pd.to_datetime(maturity)
-    schedule = mkt.Schedule(valueDate,maturity,period,adjustments,adjustments,calendar)
-    df = pd.DataFrame(schedule._gen_dates(adjustments),columns = ['Dates'])
+    schedule = mkt.Schedule(valueDate,maturity,period,adjustments,calendar)
+    df = pd.DataFrame(schedule._gen_dates(),columns = ['Dates'])
     df['Dates'] = df['Dates'].dt.strftime('%d/%m/%Y')
     return df
 
@@ -80,7 +87,7 @@ def MarketItemPillars(marketHandle, curveName):
 def MarketDv01AtEachPillar(marketHandle, curveName, shockType, shockAmount= -0.0001, notional= 1e6):
     market = Handles[marketHandle]
     curve = market.GetMarketItem(curveName)
-    return curve.Dv01AtEachPillar(shockType, shockAmount, notional)
+    return curve.Dv01AtEachPillar(shockType, market, shockAmount, notional)
     
 
 
