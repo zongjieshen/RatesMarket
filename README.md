@@ -1,6 +1,6 @@
 The package Market provides a simple illustration of the Australia Interest Rates market. The package uses Scipy for Newton-Raphson optimization
 1. To Access the Jupyter notebook, please use the one named 'Market Notebook'
-2. A Spreadsheet with xlwings added-in is also attached
+2. A Spreadsheet 'MarketAddin.xlsm' with xlwings added-in is also attached (You need to install xlwings add-in and Enable xlwings references in VBA, more details at https://docs.xlwings.org/en/stable/udfs.html)
 
 Usage
 1. Create a generic Market handle, user is able to define which curves to be built in the collection
