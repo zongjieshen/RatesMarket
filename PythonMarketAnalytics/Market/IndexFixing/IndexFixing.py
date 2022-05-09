@@ -6,6 +6,7 @@ class IndexFixing():
         self.key = key
         self.ccy = ccy
         self.discountCurve = self.key #Add this to ensure the market check doesnt fail
+        self.spreadCurve = self.key
 
         pillars.sort(key=lambda r:r.maturityDate)
         self.pillars = pillars

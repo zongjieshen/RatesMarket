@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-VERSION = '0.1'
+VERSION = '0.2'
 LICENSE = 'MIT'
 
 setup(
@@ -11,9 +11,6 @@ setup(
         install_requires=[
             'scipy',
             'numpy',
-            'blas',
-            'holidays',
-            'Enum',
-            'calendar'
+            'holidays'
             ],
      )

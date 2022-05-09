@@ -2,7 +2,7 @@ import abc
 
 class Rate():
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                 yearBasis, rate, paymentFrequency, calendar):
+                 yearBasis, rate, paymentFrequency, dateAdjuster):
         self.startDate = startDate
         self.maturityDate = maturityDate
         self.ccy = ccy
@@ -11,7 +11,7 @@ class Rate():
         self.yearBasis = yearBasis
         self.rate = rate
         self.paymentFrequency = paymentFrequency
-        self.calendar = calendar
+        self.dateAdjuster = dateAdjuster
 
 
     @abc.abstractmethod

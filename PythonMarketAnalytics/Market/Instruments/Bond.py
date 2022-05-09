@@ -4,7 +4,6 @@ from Market.Instruments import *
 import scipy.interpolate
 import scipy.optimize
 import pandas as pd
-import time
 
 class Bond(Instrument):
     def __init__(self, quote, curve, market = None, notional =1):
@@ -93,7 +92,7 @@ class IndexedBond(Bond):
 
         temp_curve.points = np.append(self.curve.points,
                                np.array([(np.datetime64(maturity.strftime('%Y-%m-%d')),
-                                          time.mktime(maturity.timetuple()),
+                                          ScheduleDefinition.DateOffset(maturity),
                                           guess)],
                                         dtype=self.curve.points.dtype))
 

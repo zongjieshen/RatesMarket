@@ -11,9 +11,9 @@ class BondQuote(Rate):
 
 class BondYield(BondQuote):
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,calendar, coupon, bondType, notionalIndexation):
+                   yearBasis, rate, paymentFrequency,dateAdjuster, coupon, bondType, notionalIndexation):
         super(BondYield, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, calendar)
+                   yearBasis, rate, paymentFrequency, dateAdjuster)
         self.quoteType='BondYield'
         self.coupon = coupon
         self.bondType = bondType
@@ -22,8 +22,9 @@ class BondYield(BondQuote):
     @classmethod
     def fromRow(cls, row, bondType, valueDate):
         calendar = row["Calendar"]
-        startDate = ScheduleDefinition.DateConvert(row["StartDate"], valueDate,calendar)
-        maturityDate = ScheduleDefinition.DateConvert(row["Maturity"], valueDate,calendar)
+        dateAdjuster = DateAdjuster('modified following', calendar)
+        startDate = ScheduleDefinition.DateConvert(row["StartDate"], valueDate,dateAdjuster)
+        maturityDate = ScheduleDefinition.DateConvert(row["Maturity"], valueDate,dateAdjuster)
         ccy = row["Currency"]
         label = row["Label"]
         rateConvention = row["RateConvention"]
@@ -34,4 +35,4 @@ class BondYield(BondQuote):
         notionalIndexation = row['NotionalIndexation'] if 'NotionalIndexation' in row else ''
 
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, calendar,coupon, bondType, notionalIndexation)
+                   yearBasis, rate, paymentFrequency, dateAdjuster,coupon, bondType, notionalIndexation)

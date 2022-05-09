@@ -18,10 +18,10 @@ class InflationCurve(Curve):
         indexFixing = market.GetMarketItem(self.indexFixingKey)
         self.initialCPI = indexFixing.LastFixing()
         #Remove the instrument if the indexation period of maturity is already known
-        for instrument in self._addInstruments(market):
+        for idx, instrument in enumerate(self._addInstruments(market)):
             if ScheduleDefinition.EndOfMonthAdj(instrument.maturity,instrument.indexLag) <= self.initialCPI.maturityDate:
                 print(f'{instrument.key} maturity date {instrument.maturity} + indexlag {instrument.indexLag} is before the IndexFixing last known date {self.initialCPI.maturityDate}')
-                instruments.remove(instrument)
+                self.pillars.pop(idx)
 
         del self.points
 
@@ -29,7 +29,7 @@ class InflationCurve(Curve):
         #Add past index fixings to the curve
         for pillar in indexFixing.pillars:
             fixings.append((np.datetime64(pillar.maturityDate.strftime('%Y-%m-%d')),
-                            time.mktime(pillar.maturityDate.timetuple()),
+                            ScheduleDefinition.DateOffset(pillar.maturityDate),
                             np.log(pillar.value)
                             ))
         self.points = np.array(fixings,dtype=[('maturity', 'datetime64[D]'),
@@ -42,7 +42,7 @@ class InflationCurve(Curve):
 
             #Add the solved df to the curve
             array = np.array([(np.datetime64(instrument.maturity.strftime('%Y-%m-%d')),
-                              time.mktime(instrument.maturity.timetuple()),
+                              ScheduleDefinition.DateOffset(instrument.maturity),
                               df)], dtype=self.points.dtype)
             self.points = np.append(self.points, array)
 

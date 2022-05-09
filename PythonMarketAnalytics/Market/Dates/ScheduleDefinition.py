@@ -1,5 +1,4 @@
 import holidays
-import calendar
 import datetime
 import numpy as np
 import pandas as pd
@@ -31,25 +30,13 @@ class ECalendar(Enum):
         DEFAULT = holidays.AU()
 
 
-class Schedule:
-    '''Schedule fixing, accrual, and payment dates
-    '''
+class DateAdjuster():
     adjustments ={'unadjusted','following','modified following','preceding'}
 
-    def __init__(self, valueDate, maturity,frequency,
-                 adjustment='unadjusted',
-                 calendar = 'SYD'):
+    def __init__(self, adjustment = 'modified following', calendar = 'DEFAULT'):
 
-        # variable assignment
-        self.valueDate = valueDate
-        self.maturity = maturity
-        self.period = frequency
-        self.adjustment = adjustment
         self.calendar = calendar
-
-        if frequency in EFrequency._member_names_:
-            self.couponPerAnnum = EFrequency[frequency].value
-    
+        self.adjustment = adjustment
 
     @property
     def adjustment(self):
@@ -61,72 +48,6 @@ class Schedule:
             raise ValueError(f"Invalid adjustment {adjustment} defined")
         self._adjustment = adjustment
 
-
-
-    def _create_schedule(self):
-        '''Private function to merge the lists of periods to a np recarray
-        '''
-        self._period_starts = [self.valueDate] + self._gen_dates()[:-1]
-        self._adjusted_period_ends = self._gen_dates()
-        self._fixing_dates = self._gen_date_adjustments(self._adjusted_period_ends)
-        self._payment_dates = self._gen_dates()
-
-        arrays = self._np_dtarrays(self._fixing_dates, self._period_starts,
-                                   self._adjusted_period_ends,
-                                   self._payment_dates)
-        arrays = (arrays + (np.zeros(len(self._fixing_dates), dtype=np.float64),) +
-                  (np.zeros(len(self._fixing_dates), dtype=np.float64),))
-        self.periods = np.rec.fromarrays((arrays),
-                                         dtype=[('fixing_date', 'datetime64[D]'),
-                                                ('accrual_start', 'datetime64[D]'),
-                                                ('accrual_end', 'datetime64[D]'),
-                                                ('payment_date', 'datetime64[D]'),
-                                                ('cashflow', np.float64), 
-                                                ('PV', np.float64)])
-
-
-    def _gen_dates(self):
-        '''Private function to backward generate a series of dates starting
-        from the maturity to the valueDate.
-
-        Note that the valueDate date is not returned.
-        '''
-        delta = ScheduleDefinition._parseDate(self.period, self.valueDate, self.maturity)
-
-        dates = []
-        current = self.maturity
-        counter = 0
-        while current > self.valueDate:
-            dates.append(current)
-            counter += 1
-            current = self.maturity - (delta * counter)
-
-        adjustedDates = self._gen_date_adjustments(dates[::-1])
-
-        return adjustedDates
-
-
-    def _gen_date_adjustments(self, dates):
-        '''Private function to take a list of dates and adjust each for a number
-        of days. It will also adjust each date for a business day adjustment if
-        requested.
-        '''
-        adjusted_dates = []
-        for date in dates:
-            adjusted_date = ScheduleDefinition._date_adjust(date, self.adjustment,self.calendar)
-            adjusted_dates.append(adjusted_date)
-        return adjusted_dates
-
-    def _np_dtarrays(self, *args):
-        '''Converts a series of lists of dates to a tuple of np arrays of
-        np.datetimes
-        '''
-        fmt = '%Y-%m-%d'
-        arrays = []
-        for arg in args:
-            arrays.append(np.asarray([np.datetime64(date.strftime(fmt)) for date in arg]))
-        return tuple(arrays)
-
 class ScheduleDefinition():
     @staticmethod
     def EndOfMonthAdj(date, lag):
@@ -135,10 +56,13 @@ class ScheduleDefinition():
 
 
     @staticmethod
-    def _date_adjust(date, adjustment,calendar):
+    def _date_adjust(date, dateAdjuster: DateAdjuster):
         '''Method to return a date that is adjusted according to the
         adjustment convention method defined
         '''
+        calendar = dateAdjuster.calendar
+        adjustment = dateAdjuster.adjustment
+
         calendar = 'DEFAULT' if calendar == None else calendar
         if adjustment == 'unadjusted':
             return date
@@ -149,10 +73,13 @@ class ScheduleDefinition():
                 elif adjustment == 'preceding':
                     date = date - pd.offsets.DateOffset(1)
                 else:
-                    if date.month == ScheduleDefinition._date_adjust(date, 'following',calendar).month:
-                        date = ScheduleDefinition._date_adjust(date, 'following',calendar)
+                    dateAdjuster = DateAdjuster('following',calendar)
+                    if date.month == ScheduleDefinition._date_adjust(date, dateAdjuster).month:
+                        newDateAdjuster = DateAdjuster('following',calendar)
+                        date = ScheduleDefinition._date_adjust(date, newDateAdjuster)
                     else:
-                        date = ScheduleDefinition._date_adjust(date, 'preceding',calendar)
+                        newDateAdjuster = DateAdjuster('preceding',calendar)
+                        date = ScheduleDefinition._date_adjust(date, newDateAdjuster)
             return date
         
     @staticmethod
@@ -193,37 +120,44 @@ class ScheduleDefinition():
         return periods
 
     @staticmethod
-    def DateConvert(dates,valueDate = None,calendar = None, adjustment = 'modified following'):
-        def _dateConvert(date, valueDate,adjustment,calendar):
+    def DateConvert(dates,valueDate = None, dateAdjuster = None):
+        if dateAdjuster is None:
+            dateAdjuster = DateAdjuster()
+
+        #Internal function
+        def _dateConvert(date, valueDate,dateAdjuster):
             if type(date) == np.datetime64:
                 timestamp = date.astype('<M8[s]').astype(np.uint64)
                 return pd.to_datetime(datetime.datetime.fromtimestamp(timestamp).replace(hour=0, minute=0, second=0, microsecond=0))
             elif type(date) == int or type(date) == float:
-                return datetime.datetime.fromtimestamp((date - 25569) * 86400)
+                return datetime.datetime.fromtimestamp((date - 25569) * 86400).replace(hour=0, minute=0, second=0, microsecond=0)
             elif type(date) == str and 't' in date:
-                return ScheduleDefinition.ShiftDays(valueDate, date, adjustment, calendar)
+                return ScheduleDefinition.ShiftDays(valueDate, date, dateAdjuster)
             else:
-                return pd.to_datetime(date)
+                return pd.to_datetime(date).replace(hour=0, minute=0, second=0, microsecond=0)
 
-        if isinstance(dates,list) == True:
+        if isinstance(dates,(list,np.ndarray)) == True:
             datesList =[]
             for date in dates:
-                datesList.append(_dateConvert(date,valueDate,adjustment,calendar))
+                datesList.append(_dateConvert(date,valueDate,dateAdjuster))
             return datesList
         else:
-            return _dateConvert(dates,valueDate,adjustment,calendar)
+            return _dateConvert(dates,valueDate, dateAdjuster)
 
 
     @staticmethod
-    def ShiftDays(valueDate, tenors,adjustment,calendar):
+    def ShiftDays(valueDate, tenors, dateAdjuster = None):
+        if dateAdjuster is None:
+            dateAdjuster = DateAdjuster()
+
         tenors = [x.strip() for x in tenors.split("+")[1:]]
         date = valueDate
         if not tenors:
             return valueDate
         for tenor in tenors:
             date = pd.to_datetime(date) + ScheduleDefinition._parseDate(tenor)
-            date = ScheduleDefinition._date_adjust(date,adjustment,calendar)
-        return date
+            date = ScheduleDefinition._date_adjust(date,dateAdjuster)
+        return date.replace(hour=0, minute=0, second=0, microsecond=0)
 
     def _parseDate(period, valueDate = None, maturity = None):
         if period is None:
@@ -272,3 +206,9 @@ class ScheduleDefinition():
         else:
             raise Exception (f'{period} date type is not defined')
 
+    @staticmethod
+    def DateOffset(date):
+        if isinstance(date, np.ndarray) is True:
+            return (date.astype('<M8[s]') - np.datetime64('1970-01-01')) / np.timedelta64(1, 's')
+        else:
+            return (np.asarray(date).astype('<M8[s]') - np.datetime64('1970-01-01')) / np.timedelta64(1, 's')

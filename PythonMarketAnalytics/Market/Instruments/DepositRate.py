@@ -11,10 +11,11 @@ class DiscountFactor(Instrument):
         return np.log(self.df)
 #Deposit
 class Deposit(Instrument):
-    def __init__(self, quote, curve, notional =1):
+    def __init__(self, quote, curve, market = None, notional =1):
         super(Deposit, self).__init__(quote)
         self.curve = curve
         self.notional = notional
+        self.market = market
 
     def SolveDf(self):
         yearFraction = ScheduleDefinition.YearFraction(self.startDate,self.maturity,self.yearBasis)
@@ -29,7 +30,7 @@ class Deposit(Instrument):
                                                   self.curve.points['discount_factor'],
                                                   kind='linear',
                                                   fill_value='extrapolate')
-            factor = np.exp(interpolator(time.mktime(self.startDate.timetuple())))
+            factor = np.exp(interpolator(ScheduleDefinition.DateOffset(self.startDate)))
             return np.log(df * factor)
 
     def Valuation(self,projectCurve, discountCurve):

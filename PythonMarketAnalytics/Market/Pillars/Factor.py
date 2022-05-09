@@ -5,9 +5,9 @@ class Factor():
         self.maturityDate = maturityDate
         self.value = value
 #Discount Factor
-class DiscountFactorRate(Factor):
+class DiscountFactor(Factor):
     def __init__(self, *args, **kwargs):
-        super(DiscountFactorRate, self).__init__(*args, **kwargs)
+        super(DiscountFactor, self).__init__(*args, **kwargs)
         self.quoteType = 'DiscountFactor'
 
 class FixingRate(Factor):

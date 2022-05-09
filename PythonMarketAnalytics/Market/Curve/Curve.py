@@ -5,19 +5,19 @@ from Market.IndexFixing import *
 import pandas as pd
 import numpy as np
 import abc
-import time
 import copy
 
 class Curve():
-    def __init__(self, key, ccy, valueDate, discountCurve, initialFactor = 1):
+    def __init__(self, key, ccy, valueDate, discountCurve ='', initialFactor = 1):
         self.key= key
         self.ccy = ccy
         self.valueDate = valueDate
         #Add property to check if discountCurve exists in Market
         self.discountCurve = discountCurve if discountCurve !='' and discountCurve is not None else key
         self._built = False
+        self.spreadCurve = self.key
         self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
-                                time.mktime(self.valueDate.timetuple()),
+                                ScheduleDefinition.DateOffset(self.valueDate),
                                 np.log(initialFactor))],
                               dtype=[('maturity', 'datetime64[D]'),
                                      ('timestamp', np.float64),
@@ -30,7 +30,7 @@ class Curve():
     def Build(self):
         return NotImplementedError
 
-    def DiscountFactor(self, dates, returndf = False):
+    def DiscountFactor(self, dates,InterpMethod = 'linear', returndf = False):
         '''Returns the interpolated discount factor for an arbitrary date
         '''
         
@@ -38,14 +38,13 @@ class Curve():
             dates = np.asarray(dates)
         if isinstance(dates,np.ndarray) is False:
             dates = np.asarray([dates])
-        if all(isinstance(item, (datetime.datetime, np.datetime64)) for item in dates):
-            dates = np.array(pd.to_datetime(dates))
-
+        #if all(isinstance(item, (datetime.datetime, np.datetime64)) for item in dates):
+        #    dates = np.array(pd.to_datetime(dates))
         interpolator = scipy.interpolate.interp1d(self.points['timestamp'],
                                                   self.points['discount_factor'],
-                                                  kind='linear',
+                                                  kind=InterpMethod,
                                                   fill_value='extrapolate') 
-        values = np.exp(interpolator(dates.astype('<M8[s]')))
+        values = np.exp(interpolator(ScheduleDefinition.DateOffset(dates)))
 
         if returndf is True:
             dt = pd.DataFrame(list(zip(dates,values)),columns =['Dates', f'{self.key}.DiscountFactor'])
@@ -78,9 +77,10 @@ class Curve():
         dt.set_index('Dates',inplace=True)
         return dt
 
-    def SwapRates(self,dates, tenor, yearBasis = 'acton365f', rateConvention = 'linear'):
+    def SwapRates(self,dates, tenor, yearBasis = 'acton365f', rateConvention = 'linear', adjustment = 'modified following', calendar = 'SYD'):
         def _sumproduct(date):
-                schedule = mkt.Schedule(self.valueDate,date,tenor,'modified following')
+                dateAdjuster = DateAdjuster(adjustment, calendar)
+                schedule = mkt.Schedule(self.valueDate,date,tenor,dateAdjuster)
                 schedule._create_schedule()
                 periodStart = schedule.periods['accrual_start']
                 periodEnd  = schedule.periods['accrual_end']
@@ -118,7 +118,7 @@ class Curve():
             elif returnType.lower().startswith ('swaprate'):
                 charts.append(curve.SwapRates(dates, tenor, yearBasis, rateConvention))
             else:
-                charts.append(curve.DiscountFactor(dates,True))
+                charts.append(curve.DiscountFactor(dates,returndf = True))
         return pd.concat(charts,axis=1)
 
     def view(self, ret=False):

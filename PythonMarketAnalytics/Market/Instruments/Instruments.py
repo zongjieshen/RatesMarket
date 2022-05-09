@@ -1,12 +1,11 @@
 from Market.Dates import *
 from Market.Pillars import *
 import pandas as pd
-import time
 import copy
 import abc
 
 class Instrument():
-    def __init__(self, quote, adjustment = 'modified following'):
+    def __init__(self, quote):
         self.key = quote.label
         self.ccy = quote.ccy
         self.yearBasis = quote.yearBasis
@@ -14,10 +13,10 @@ class Instrument():
         self.startDate = quote.startDate
         self.maturity = quote.maturityDate
         self.rate = quote.rate
-        self.calendar = quote.calendar
+        self.dateAdjuster = quote.dateAdjuster
 
         self.schedule = Schedule(self.startDate,self.maturity,
-                                 quote.paymentFrequency,adjustment,self.calendar)
+                                 quote.paymentFrequency,self.dateAdjuster)
         self.schedule._create_schedule()
         
     @abc.abstractmethod
@@ -32,7 +31,7 @@ class Instrument():
         temp_curve = copy.deepcopy(self.curve)
         temp_curve.points = np.append(self.curve.points,
                                np.array([(np.datetime64(self.maturity.strftime('%Y-%m-%d')),
-                                          time.mktime(self.maturity.timetuple()),
+                                          ScheduleDefinition.DateOffset(self.maturity),
                                           guess)],
                                         dtype=self.curve.points.dtype))
 

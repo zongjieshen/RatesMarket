@@ -2,12 +2,8 @@ from Market.Pillars import *
 from Market.Instruments import *
 from Market.Curve.YieldCurveFactory import *
 from Market.Curve.Curve import *
-import Market as mkt
+from Market.Curve.PriceCurve import *
 import pandas as pd
-import scipy.interpolate
-import time
-import copy
-import abc
 
 
 class YieldCurve(Curve):
@@ -21,10 +17,9 @@ class YieldCurve(Curve):
 
         for instrument in self._addInstruments(market):
             df = instrument.SolveDf()
-
             #Add the solved df to the curve
             array = np.array([(np.datetime64(instrument.maturity.strftime('%Y-%m-%d')),
-                              time.mktime(instrument.maturity.timetuple()),
+                               ScheduleDefinition.DateOffset(instrument.maturity),
                               df)], dtype=self.points.dtype)
             self.points = np.append(self.points, array)
 
@@ -68,7 +63,7 @@ class YieldCurve(Curve):
             if maturityDate > self.valueDate and (pillarToShock == -1 or idx == pillarToShock):
                 yearFraction = ScheduleDefinition.YearFraction(self.valueDate,maturityDate,'ActOn365f')
                 dfShifted = RateConvention('Linear',yearFraction).RateToDf(shockAmount)[0] * df
-                pillar = DiscountFactorRate(maturityDate,dfShifted)
+                pillar = DiscountFactor(maturityDate,dfShifted)
                 shiftedPillars.append(pillar)
         return YieldCurve(shiftedKey,self.valueDate,self.ccy,shiftedPillars,self.discountCurve)
     #PillarShock
@@ -101,4 +96,54 @@ class YieldCurve(Curve):
 
         shockedYc.Build(market)
         return shockedYc
+
+    
+    def ToFowardRateCurve(self, period = '3m', yearBasis = 'acton365f'):
+        '''Converting a yield curve to fwd rate curve using Deposit Rate
+        The discount factor results before and after should be the same'''
+        fwdPillars =[]
+        dateAdjuster = DateAdjuster('unadjusted')
+        maturity = self.pillars[-1].maturityDate
+        schedule = mkt.Schedule(self.valueDate,maturity,period,dateAdjuster)
+        schedule._create_schedule()
+        startDates = schedule.periods['accrual_start']
+        endDates = schedule.periods['accrual_end']
+        yfs = ScheduleDefinition.YearFractionList(startDates, endDates, yearBasis)
+        df = self.DiscountFactor(endDates) / self.DiscountFactor(startDates)
+        fwds = RateConvention('Linear',yfs).DfToRate(df)
+
+        #Construct new fwd curve using deposit rate
+        for startDate, endDate, fwd in zip(startDates, endDates, fwds):
+            startDate = ScheduleDefinition.DateConvert(startDate)
+            endDate = ScheduleDefinition.DateConvert(endDate)
+            fwdPillars.append(DepositRate(startDate, endDate, self.ccy, 
+                                          startDate.strftime('%Y-%m-%d'),
+                                          'Linear',yearBasis, fwd, 'Zero', dateAdjuster))
+
+        fwdRateCurve = YieldCurve(self.key,self.valueDate,self.ccy, fwdPillars)
+        fwdRateCurve.Build()
+
+        return fwdRateCurve
+
+    #Shock curve on forward rates
+    def ToFowardSpreadCurve(self, spreads, curveName, period = '3m', yearBasis = 'acton365f'):
+        '''Adding a spread curve on yield curve on the fwd basis'''
+        fwdCurve = self.ToFowardRateCurve(period,yearBasis)
+        shiftedPillars = copy.deepcopy(fwdCurve.pillars)
+        for pillar in shiftedPillars:
+            if isinstance(spreads, PriceCurve):
+                spread = spreads.Price(pillar.startDate,spreads.interpMethod)
+                pillar.Shock(spread)
+            elif isinstance(spreads, float):
+                pillar.Shock(spreads)
+            else:
+                raise Exception (f'{spreads} type is not supported')
+
+        fwdSpreadCurve = YieldCurve(curveName,self.valueDate,self.ccy, shiftedPillars)
+        fwdSpreadCurve.Build()
+
+        return fwdSpreadCurve
+
+
+
 

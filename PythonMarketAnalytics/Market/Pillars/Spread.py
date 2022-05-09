@@ -3,10 +3,10 @@ import Market.Dates as Dates
 
 
 #Deposit Rate
-class DepositRate(Rate):
+class Spread(Rate):
     def __init__(self, *args, **kwargs):
-        super(DepositRate, self).__init__(*args, **kwargs)
-        self.quoteType = 'DepositRate'
+        super(Spread, self).__init__(*args, **kwargs)
+        self.quoteType = 'Spread'
 
     @classmethod
     def fromRow(cls, row, valueDate):

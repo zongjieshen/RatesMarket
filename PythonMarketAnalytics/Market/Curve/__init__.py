@@ -3,3 +3,7 @@ from Market.Curve.InflationCurve import *
 from Market.Curve.InflationCurveFactory import *
 from Market.Curve.YieldCurve import *
 from Market.Curve.YieldCurveFactory import *
+from Market.Curve.PriceCurve import *
+from Market.Curve.PriceCurveFactory import *
+from Market.Curve.SpreadYieldCurve import *
+from Market.Curve.SpreadYieldCurveFactory import *

@@ -9,11 +9,13 @@ class RateConvention():
         self.yearFraction = yearFraction
 
     def DfToRate(self,dfs):
-        if isinstance(dfs, list) == False:
-            rates = [dfs]
+        if isinstance(dfs, (list,np.ndarray)) == False:
+            dfs = [dfs]
             yearFraction = [self.yearFraction]
+        else:
+            yearFraction = self.yearFraction
         rate = np.empty_like(dfs, dtype=np.float64)
-        for idx, (df, t) in enumerate(zip(dfs,self.yearFraction)):
+        for idx, (df, t) in enumerate(zip(dfs,yearFraction)):
             if t == 0:
                 rate[idx] = 0
             elif self._rateConvention.lower() == 'zero':
@@ -33,7 +35,7 @@ class RateConvention():
         return rate
 
     def RateToDf(self, rates):
-        if isinstance(rates, list) == False:
+        if isinstance(rates, (list,np.ndarray)) == False:
             rates = [rates]
             yearFraction = [self.yearFraction]
         dfs = np.empty_like(rates, dtype=np.float64)

@@ -20,24 +20,29 @@ class Market():
             if next((x for x in self.marketItems.values() if x.key == item.discountCurve), None) is None:
                 raise Exception(f'{item.discountCurve} curve doesnt exist in the market list')
 
-        def _sortMarket(marketItemList, newList):
+        def _sortMarket(marketItemList, dependency, newList = None):
+            marketItemList.sort(key=lambda r:r.key == getattr(r,dependency), reverse = True)
+            if newList is None:
+                newList =[]
             if len(marketItemList) ==0:
-                return
+                return newList
             
             for item in marketItemList:
-                if item.key == item.discountCurve and item not in newList:
+                if item.key == getattr(item,dependency) and item not in newList:
                    newList.append(item)
                    marketItemList.remove(item)
-                elif item.key != item.discountCurve and next((x for x in newList if x.key == item.discountCurve), None) is not None:
+                   break
+                elif item.key != getattr(item,dependency) and next((x for x in newList if x.key == getattr(item,dependency)), None) is not None:
                    newList.append(item)
                    marketItemList.remove(item)
+                   break
                 else:
                     marketItemList.append(marketItemList.pop(0))
                     break
-            _sortMarket(marketItemList, newList)
+            return _sortMarket(marketItemList, dependency, newList)
 
-        sortedMarketList =[]
-        _sortMarket(list(self.marketItems.values()),sortedMarketList)
+        sortedMarketList = _sortMarket(list(self.marketItems.values()), 'discountCurve')
+        sortedMarketList = _sortMarket(sortedMarketList, 'spreadCurve')
         #TODO MultiProcessing
 
         #marketItems = sorted(self.marketItems.values(), key=lambda x: (x.key != x.discountCurve))
@@ -57,8 +62,8 @@ class Market():
         else:
             itemList =[]
             for key, item in self.marketItems.items():
-                itemList.append((item.ccy, key))
-        return pd.DataFrame(itemList,columns = ['Currency','Items'])
+                itemList.append((item.ccy + '|'+ item.__class__.__name__, key))
+        return pd.DataFrame(itemList,columns = ['Currency|ItemType','Items'])
 
     def AddorUpdateItem(self,marketItem):
         if marketItem.key in self.marketItems:
@@ -71,7 +76,7 @@ class Market():
         if curveKey in self.marketItems:
             return self.marketItems[curveKey]
         else:
-            return Exception (f'{curveKey} does not exist in the Market {self.handlename}')
+            return Exception (f'{curveKey} does not exist in the Market {self.handleName}')
 
     def YcShock(self,ycKey,shockType,shockAmount,pillarToShock=-1):
         shockedYc = self.marketItems[ycKey].CreateShockedCurve(shockType,shockAmount,pillarToShock,self)
@@ -88,9 +93,9 @@ class MarketFactory():
         ifDf = pd.read_excel(filePath,sheet_name='IndexFixing')
         market = Market(handleName, valueDate, filePath)
         if buildItems is None:
-            market._itemsToBuild = MarketDataManager.baseMarket()
+            market._itemsToBuild = mkt.MarketDataManager.baseMarket()
         else:
-            market._itemsToBuild = MarketDataManager.FromExcelArray(buildItems)
+            market._itemsToBuild = mkt.MarketDataManager.FromExcelArray(buildItems)
 
         for item in market._itemsToBuild:
             itemType = item.itemType
@@ -102,6 +107,10 @@ class MarketFactory():
                 marketItem = mkt.InflationCurveFactory.Creat(icDf,item,market.valueDate,item.build)
             elif itemType.lower() == 'indexfixing':
                 marketItem = mkt.IndexFixingFactory.Creat(ifDf,item,market.valueDate,item.build)
+            elif itemType.lower() == 'pricecurve':
+                marketItem = mkt.PriceCurveFactory.Creat(ycDf,item,market.valueDate,item.build)
+            elif itemType.lower() == 'spreadyieldcurve':
+                marketItem = mkt.SpreadYieldCurveFactory.Creat(item,market.valueDate,item.build)
             else:
                 return NotImplementedError
 
@@ -110,50 +119,3 @@ class MarketFactory():
 
         market._build()
         return market
-
-class MarketDataManager():
-    def baseMarket():
-        bondfilters = "ValueType == 'BondYield' and Currency == 'AUD'"
-        audswapFilters = "(ValueType == 'DepositRate' and Label.str.contains ('AUDBILL').values) or (ValueType == 'SwapRate' and Label.str.contains ('AUDSwap').values)"
-        gbpOisFilters = "Currency == 'GBP' and Context == 'Valuation' and Source == 'BBG' and ValueType == 'SwapRate' and CompoundingFrequency == 'Daily'"
-        jpyOisFilters = "Currency == 'JPY' and Context == 'Valuation' and Source == 'BBG' and ValueType == 'SwapRate' and CompoundingFrequency == 'Daily'"
-        audSwap3mFilters = "(ValueType == 'DepositRate' and Label.str.contains ('AUDBILL').values) or ValueType == 'SwapRate' and PaymentFrequency == 'Quarterly' and Label.str.startswith('AUDSwap').values or ValueType == 'BasisSwap' and PaymentFrequency == 'SemiAnnual' and Label.str.startswith('AUDBasis6m3m').values"
-        audSwap6mFilters = "(ValueType == 'DepositRate' and Label.str.contains ('AUDBILL').values) or ValueType == 'SwapRate' and PaymentFrequency == 'SemiAnnual' and Label.str.startswith('AUDSwap').values or ValueType == 'BasisSwap' and PaymentFrequency == 'Quarterly' and Label.str.startswith('AUDBasis6m3m').values"
-        audSwap1mFilters = "(ValueType == 'DepositRate' and Label.str.contains ('AUDBILL').values) or ValueType == 'BasisSwap' and Label.str.startswith('AUDBasis3m1m').values"
-        beiCurveFilters = "Currency =='AUD' and Context == 'Valuation' and Source == 'BBG' and ValueType == 'BondYield'"
-        aucpiFilter = "Currency =='AUD'"
-
-        bondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD')
-        audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD')
-        gbpOisItem = ItemToBuild(True,'yieldCurve','GBPOIS',gbpOisFilters,'GBP')
-        jpyOisItem = ItemToBuild(True,'yieldCurve','JPYOIS',jpyOisFilters,'JPY')
-        audSwap3mItem = ItemToBuild(True,'yieldCurve','AUDSwap3m',audSwap3mFilters,'AUD','AUDSwap')
-        audSwap6mItem = ItemToBuild(True,'yieldCurve','AUDSwap6m',audSwap6mFilters,'AUD','AUDSwap')
-        audSwap1mItem = ItemToBuild(True,'yieldCurve','AUDSwap1m',audSwap1mFilters,'AUD','AUDSwap3m')
-
-        auCPI = ItemToBuild(True,'indexfixing','AUCPI',aucpiFilter,'AUD')
-        beiCurve = ItemToBuild(True,'InflationCurve','AUD.Bond.Gov.BEI',beiCurveFilters,'AUD','AUDBondGov','AUCPI')
-
-        itemsToBuild = [audSwap3mItem,audSwap6mItem,audSwap1mItem,audSwapItem,gbpOisItem,jpyOisItem,bondCurveItem,auCPI,beiCurve]
-        #itemsToBuild = [audSwapItem]
-        return itemsToBuild
-
-    def FromExcelArray(dt):
-        buildItems =[]
-        for index, row in dt.iterrows():
-            item = ItemToBuild(row['Build'],row['CurveType'],
-                               row['Label'],row['Filter'],row['Ccy'],
-                               row['DiscountCurve'],row['IndexFixingKey'])
-            buildItems.append(item)
-        return buildItems
-
-
-class ItemToBuild():
-    def __init__(self, build: bool, itemType: str, label: str, filters: str, ccy: str, discountCurve = '', indexFixing = ''):
-        self.build = build
-        self.itemType = itemType
-        self.label = label
-        self.filters = filters
-        self.ccy = ccy
-        self.discountCurve = discountCurve
-        self.indexFixing = indexFixing
