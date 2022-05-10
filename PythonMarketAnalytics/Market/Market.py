@@ -21,14 +21,14 @@ class Market():
                 raise Exception(f'{item.discountCurve} curve doesnt exist in the market list')
 
         def _sortMarket(marketItemList, dependency, newList = None):
-            marketItemList.sort(key=lambda r:r.key == getattr(r,dependency), reverse = True)
+            marketItemList.sort(key=lambda r: hasattr(r,dependency) is False or r.key == getattr(r,dependency), reverse = True)
             if newList is None:
                 newList =[]
             if len(marketItemList) ==0:
                 return newList
             
             for item in marketItemList:
-                if item.key == getattr(item,dependency) and item not in newList:
+                if hasattr(item,dependency) is False or item.key == getattr(item,dependency) and item not in newList:
                    newList.append(item)
                    marketItemList.remove(item)
                    break
@@ -62,7 +62,7 @@ class Market():
         else:
             itemList =[]
             for key, item in self.marketItems.items():
-                itemList.append((item.ccy + '|'+ item.__class__.__name__, key))
+                itemList.append((item.ccy + '|'+ item.__class__.__name__, item.key))
         return pd.DataFrame(itemList,columns = ['Currency|ItemType','Items'])
 
     def AddorUpdateItem(self,marketItem):
@@ -73,8 +73,8 @@ class Market():
             self.marketItems[marketItem.key] = marketItem
 
     def GetMarketItem(self,curveKey):
-        if curveKey in self.marketItems:
-            return self.marketItems[curveKey]
+        if curveKey.lower() in self.marketItems:
+            return self.marketItems[curveKey.lower()]
         else:
             return Exception (f'{curveKey} does not exist in the Market {self.handleName}')
 
@@ -115,7 +115,7 @@ class MarketFactory():
                 return NotImplementedError
 
             if marketItem:
-                market.marketItems[marketItem.key] = marketItem
+                market.marketItems[marketItem.key.lower()] = marketItem
 
         market._build()
         return market

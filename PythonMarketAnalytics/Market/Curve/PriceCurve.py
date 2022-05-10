@@ -6,12 +6,11 @@ import pandas as pd
 
 
 class PriceCurve(Curve):
-    def __init__(self, key,valueDate, ccy, pillars, interpMethod):
-        super(PriceCurve, self).__init__(key, ccy, valueDate)
+    def __init__(self, key,valueDate, ccy, pillars, **kwargs):
+        super(PriceCurve, self).__init__(key, ccy, valueDate, **kwargs)
 
         pillars.sort(key=lambda r:r.maturityDate)
         self.pillars = pillars
-        self.interpMethod = interpMethod
         
     def Build(self,market=None):
         del self.points

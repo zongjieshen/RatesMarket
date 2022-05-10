@@ -6,12 +6,12 @@ import time
 
 
 class InflationCurve(Curve):
-    def __init__(self, key,valueDate, ccy, pillars, discount_curve, indexFixingKey):
-        super(InflationCurve, self).__init__(key, ccy, valueDate, discount_curve)
+    def __init__(self, key,valueDate, ccy, pillars, **kwargs):
+        super(InflationCurve, self).__init__(key, ccy, valueDate, **kwargs)
 
         pillars.sort(key=lambda r:r.maturityDate)
         self.pillars = pillars
-        self.indexFixingKey = indexFixingKey
+        self.indexFixingKey = kwargs.get('indexfixing','AUCPI')
         
 
     def Build(self,market=None):

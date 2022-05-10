@@ -7,8 +7,8 @@ import pandas as pd
 
 
 class YieldCurve(Curve):
-    def __init__(self, key,valueDate, ccy, pillars, discount_curve=''):
-        super(YieldCurve, self).__init__(key, ccy, valueDate, discount_curve)
+    def __init__(self, key,valueDate, ccy, pillars, **kwargs):
+        super(YieldCurve, self).__init__(key, ccy, valueDate, **kwargs)
 
         pillars.sort(key=lambda r:r.maturityDate)
         self.pillars = pillars

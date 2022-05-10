@@ -5,5 +5,6 @@ from Market.Instruments import *
 from Market.Curve import *
 from Market.IndexFixing import *
 from Market.DataManager import *
-__all__ = ['Pillars','Curve','Dates','Market','Instruments','IndexFixing','DataManager']
+from Market.Extension import *
+__all__ = ['Pillars','Curve','Dates','Market','Instruments','IndexFixing','DataManager','Extension']
 

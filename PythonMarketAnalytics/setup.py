@@ -11,6 +11,7 @@ setup(
         install_requires=[
             'scipy',
             'numpy',
-            'holidays'
+            'holidays',
+            'dataclasses'
             ],
      )

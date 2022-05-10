@@ -8,17 +8,19 @@ import abc
 import copy
 
 class Curve():
-    def __init__(self, key, ccy, valueDate, discountCurve ='', initialFactor = 1):
+    def __init__(self, key, ccy, valueDate, **kwargs):
         self.key= key
         self.ccy = ccy
         self.valueDate = valueDate
         #Add property to check if discountCurve exists in Market
-        self.discountCurve = discountCurve if discountCurve !='' and discountCurve is not None else key
+        self.discountCurve = kwargs.get('discountcurve',self.key)
+        self.interpMethod = kwargs.get('interpmethod','linear')
+        self.initialFactor = kwargs.get('initialFactor',1)
+
         self._built = False
-        self.spreadCurve = self.key
         self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
                                 ScheduleDefinition.DateOffset(self.valueDate),
-                                np.log(initialFactor))],
+                                np.log(self.initialFactor))],
                               dtype=[('maturity', 'datetime64[D]'),
                                      ('timestamp', np.float64),
                                      ('discount_factor', np.float64)])
@@ -30,7 +32,7 @@ class Curve():
     def Build(self):
         return NotImplementedError
 
-    def DiscountFactor(self, dates,InterpMethod = 'linear', returndf = False):
+    def DiscountFactor(self, dates, returndf = False):
         '''Returns the interpolated discount factor for an arbitrary date
         '''
         
@@ -42,7 +44,7 @@ class Curve():
         #    dates = np.array(pd.to_datetime(dates))
         interpolator = scipy.interpolate.interp1d(self.points['timestamp'],
                                                   self.points['discount_factor'],
-                                                  kind=InterpMethod,
+                                                  kind=self.InterpMethod,
                                                   fill_value='extrapolate') 
         values = np.exp(interpolator(ScheduleDefinition.DateOffset(dates)))
 

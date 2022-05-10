@@ -7,7 +7,6 @@ class SpreadYieldCurveFactory:
 
     @staticmethod
     def Creat(itemToBuild, valueDate, build: bool):
-        return mkt.SpreadYieldCurve(itemToBuild.label, valueDate, itemToBuild.ccy, itemToBuild.periods, 
-                                    itemToBuild.yearBasis, itemToBuild.discountCurve, itemToBuild.spreadCurve)
+        return mkt.SpreadYieldCurve(itemToBuild.label,itemToBuild.ccy, valueDate, **itemToBuild.params)
 
 

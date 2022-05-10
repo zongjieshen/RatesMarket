@@ -7,7 +7,7 @@ Handles ={}
 if __name__ == '__main__':
     valueDate = pd.to_datetime('31/12/2021')
     baseMarket = mkt.MarketFactory.Create('baseMarket',valueDate)
-    curve = baseMarket.marketItems['AUDBondGov']
+    curve = baseMarket.GetMarketItem('AUDBondGov')
     iaaCurve = baseMarket.GetMarketItem('IaaSpread')
     fwdCurve = curve.ToFowardSpreadCurve(iaaCurve, 'IaaCurve')
     #aud3mcurve = baseMarket.marketItems['AUDSwap3m']

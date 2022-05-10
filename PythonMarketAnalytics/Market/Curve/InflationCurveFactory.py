@@ -15,9 +15,9 @@ class InflationCurveFactory:
         data = dataFrame.query(filters)
         if data.empty:
             raise Exception('Failed to retrieve curve date')
-        return InflationCurveFactory._icCreate(data, label, ccy, valueDate, itemToBuild.discountCurve, itemToBuild.indexFixing)
+        return InflationCurveFactory._icCreate(data, label, ccy, valueDate, itemToBuild.params)
 
-    def _icCreate(df, key, ccy,valueDate, discountCurve, indexFixingKey):
+    def _icCreate(df, key, ccy,valueDate, params):
         pillars = []
         try:
             for index, row in df.iterrows():
@@ -28,7 +28,7 @@ class InflationCurveFactory:
                     pass
                 elif pillarType == 'BondYield':
                     pillar = mkt.BondYield.fromRow(row, 'CapitalIndexed', valueDate)
-                    pillar.indexFixingKey = indexFixingKey
+                    pillar.indexFixingKey = params['indexfixing']
                     pillars.append(pillar)
                 elif pillarType == 'BondPrice':
                     pass
@@ -41,7 +41,7 @@ class InflationCurveFactory:
         except Exception as exp:
             raise Exception(exp)
 
-        return mkt.InflationCurve(key,valueDate,ccy,pillars,discountCurve,indexFixingKey)
+        return mkt.InflationCurve(key,valueDate,ccy,pillars,**params)
 
 
 

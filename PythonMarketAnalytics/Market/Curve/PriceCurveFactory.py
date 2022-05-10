@@ -15,9 +15,9 @@ class PriceCurveFactory:
         data = dataFrame.query(filters)
         if data.empty:
             raise Exception('Failed to retrieve curve date')
-        return PriceCurveFactory._pcCreate(data, label, ccy, valueDate, itemToBuild.interpMethod)
+        return PriceCurveFactory._pcCreate(data, label, ccy, valueDate, itemToBuild.params)
 
-    def _pcCreate(df, key, ccy, valueDate, interpMethod):
+    def _pcCreate(df, key, ccy, valueDate, params):
         pillars = []
         try:
             for index, row in df.iterrows():
@@ -25,6 +25,6 @@ class PriceCurveFactory:
         except Exception as exp:
             raise Exception(exp)
 
-        return mkt.PriceCurve(key,valueDate,ccy,pillars,interpMethod)
+        return mkt.PriceCurve(key,valueDate,ccy,pillars,**params)
 
 

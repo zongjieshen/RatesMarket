@@ -15,9 +15,9 @@ class YieldCurveFactory:
         data = dataFrame.query(filters)
         if data.empty:
             raise Exception('Failed to retrieve curve date')
-        return YieldCurveFactory._ycCreate(data, label, ccy, itemToBuild.discountCurve, valueDate)
+        return YieldCurveFactory._ycCreate(data, label, ccy, valueDate, itemToBuild.params )
 
-    def _ycCreate(df, key, ccy, discountCurve, valueDate):
+    def _ycCreate(df, key, ccy, valueDate, params):
         pillars = []
         try:
             for index, row in df.iterrows():
@@ -48,7 +48,7 @@ class YieldCurveFactory:
         except Exception as exp:
             raise Exception(exp)
 
-        return mkt.YieldCurve(key,valueDate,ccy,pillars,discountCurve)
+        return mkt.YieldCurve(key,valueDate,ccy,pillars,**params)
 
     @staticmethod
     def ToAssets(pillar,curve, notional):

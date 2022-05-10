@@ -5,16 +5,16 @@ from Market.Curve.PriceCurve import *
 
 
 class SpreadYieldCurve(YieldCurve):
-    def __init__(self, key,valueDate, ccy,periods, yearBasis, discountCurve: str, priceCurve: str):
+    def __init__(self, key, ccy,valueDate, **kwargs):
         #Initialise the base Curve class to get initial df, but don't initialise YieldCurve as we dont have pillars yet
-        super(YieldCurve, self).__init__(key, ccy, valueDate, discountCurve)
+        super(YieldCurve, self).__init__(key, ccy, valueDate, **kwargs)
         self.key= key
         self.valueDate = valueDate
         self.ccy = ccy
-        self.periods = periods
-        self.yearBasis = yearBasis
-        self.discountCurve  = discountCurve
-        self.spreadCurve = priceCurve
+        #Need to guard the below
+        self.periods = kwargs.get('periods',None)
+        self.yearBasis = kwargs.get('yearbasis',None)
+        self.spreadCurve = kwargs.get('spreadcurve',None)
 
 
     def Build(self,market):
