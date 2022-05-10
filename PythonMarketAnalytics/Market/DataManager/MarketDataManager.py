@@ -44,10 +44,10 @@ class MarketDataManager():
     def FromExcelArray(dt):
         buildItems =[]
         for index, row in dt.iterrows():
-            params = XString(row['Params']) if row['Params'] is not None else ''
+            params = XString(row['Params'])._toDictionary('=',';') if row['Params'] is not None else {}
             item = ItemToBuild(row['Build'],row['CurveType'],
                                row['Label'],row['Filter'],row['Ccy'],
-                               **params._toDictionary('=',';'))
+                               params)
             buildItems.append(item)
         return buildItems
 

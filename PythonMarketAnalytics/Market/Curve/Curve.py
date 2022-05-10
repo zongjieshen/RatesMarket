@@ -44,7 +44,7 @@ class Curve():
         #    dates = np.array(pd.to_datetime(dates))
         interpolator = scipy.interpolate.interp1d(self.points['timestamp'],
                                                   self.points['discount_factor'],
-                                                  kind=self.InterpMethod,
+                                                  kind=self.interpMethod,
                                                   fill_value='extrapolate') 
         values = np.exp(interpolator(ScheduleDefinition.DateOffset(dates)))
 
