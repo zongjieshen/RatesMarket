@@ -3,13 +3,14 @@ import datetime
 import numpy as np
 import pandas as pd
 from enum import Enum
+from Market.Util import Constants, OneOf
 
 class EFrequency(Enum):
-        Annual = 1
-        SemiAnnual = 2
-        Quarterly = 4
-        Monthly = 12
-        Zero = 0
+        annual = 1
+        semiannual = 2
+        quarterly = 4
+        monthly = 12
+        zero = 0
 
 class ECalendar(Enum):
         SYD = holidays.AU()
@@ -31,22 +32,12 @@ class ECalendar(Enum):
 
 
 class DateAdjuster():
-    adjustments ={'unadjusted','following','modified following','preceding'}
+    adjustment = OneOf(Constants.Adjustments)
 
     def __init__(self, adjustment = 'modified following', calendar = 'DEFAULT'):
-
         self.calendar = calendar
         self.adjustment = adjustment
 
-    @property
-    def adjustment(self):
-        return self._adjustment
-
-    @adjustment.setter
-    def adjustment(self,adjustment):
-        if adjustment not in self.adjustments:
-            raise ValueError(f"Invalid adjustment {adjustment} defined")
-        self._adjustment = adjustment
 
 class ScheduleDefinition():
     @staticmethod
@@ -164,15 +155,15 @@ class ScheduleDefinition():
             raise Exception(f'{period} cannot be None')
 
         if (period in EFrequency._member_names_):
-            if EFrequency[period] is EFrequency.Annual:
+            if EFrequency[period] is EFrequency.annual:
                 return pd.offsets.DateOffset(years=1)
-            elif EFrequency[period] is EFrequency.Monthly:
+            elif EFrequency[period] is EFrequency.monthly:
                 return pd.offsets.DateOffset(months=1)
-            elif EFrequency[period] is EFrequency.Quarterly:
+            elif EFrequency[period] is EFrequency.quarterly:
                 return pd.offsets.DateOffset(months=3)
-            elif EFrequency[period] is EFrequency.SemiAnnual:
+            elif EFrequency[period] is EFrequency.semiannual:
                 return pd.offsets.DateOffset(months=6)
-            elif EFrequency[period] is EFrequency.Zero and valueDate is not None and maturity is not None:
+            elif EFrequency[period] is EFrequency.zero and valueDate is not None and maturity is not None:
                 return maturity - valueDate
             else:
                 return pd.offsets.DateOffset(months=0)

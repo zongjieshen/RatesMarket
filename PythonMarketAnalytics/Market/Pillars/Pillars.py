@@ -1,6 +1,11 @@
 import abc
+from Market.Util import Constants, OneOf
 
 class Rate():
+    yearBasis = OneOf(Constants.YearBasis)
+    paymentFrequency = OneOf(Constants.RateConvention)
+    rateConvention = OneOf(Constants.RateConvention)
+
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
                  yearBasis, rate, paymentFrequency, dateAdjuster):
         self.startDate = startDate

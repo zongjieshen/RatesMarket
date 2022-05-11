@@ -2,12 +2,15 @@ import Market.Dates as Dates
 from Market.Pillars import *
 from Market.Instruments import *
 from Market.IndexFixing import *
+from Market.Util import Constants, OneOf
 import pandas as pd
 import numpy as np
 import abc
 import copy
 
 class Curve():
+    interpMethod = OneOf(Constants.InterpMethod)
+
     def __init__(self, key, ccy, valueDate, **kwargs):
         self.key= key
         self.ccy = ccy

@@ -5,32 +5,6 @@ import pandas as pd
 from enum import Enum
 from Market.Dates.ScheduleDefinition import *
 
-class EFrequency(Enum):
-        Annual = 1
-        SemiAnnual = 2
-        Quarterly = 4
-        Monthly = 12
-        Zero = 0
-
-class ECalendar(Enum):
-        SYD = holidays.AU()
-        CAN = holidays.CA()
-        SWI = holidays.CH()
-        DEN = holidays.DK()
-        EUR = holidays.TAR()
-        UKG = holidays.UK()
-        HKG = holidays.HK()
-        JAP = holidays.JP()
-        NOR = holidays.NO()
-        NZL = holidays.NZ()
-        SWE = holidays.SE()
-        SIN = holidays.SG()
-        USA = holidays.US()
-        TOKYO = holidays.JP()
-        LONDON = holidays.England()
-        DEFAULT = holidays.AU()
-
-
 class Schedule:
     '''Schedule fixing, accrual, and payment dates
     '''

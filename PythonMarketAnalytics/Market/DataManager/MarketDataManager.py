@@ -1,7 +1,9 @@
 import pandas as pd
 from pathlib import Path
-from Market.Extension import *
+from Market.Util import *
 from dataclasses import dataclass, field
+from Market.Util import Constants
+
 
 
 class MarketDataManager():
@@ -63,4 +65,6 @@ class ItemToBuild():
     ccy: str
     params: dict = field(default_factory=dict)
 
-
+    def __post_init__(self):
+        if self.itemType.lower() not in Constants.ItemType:
+            raise ValueError(f'Expected {self.itemType!r} to be one of {Constants.ItemType!r}')
