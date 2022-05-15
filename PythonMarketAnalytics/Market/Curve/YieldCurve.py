@@ -1,10 +1,4 @@
-from Market.Pillars import *
-from Market.Instruments import *
-from Market.Curve.YieldCurveFactory import *
-from Market.Curve.Curve import *
-from Market.Curve.PriceCurve import *
-import pandas as pd
-
+from Market.Curve import *
 
 class YieldCurve(Curve):
     def __init__(self, key,valueDate, ccy, pillars, **kwargs):
@@ -12,6 +6,23 @@ class YieldCurve(Curve):
 
         pillars.sort(key=lambda r:r.maturityDate)
         self.pillars = pillars
+        self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
+                        ScheduleDefinition.DateOffset(self.valueDate),
+                        np.log(self.initialFactor))],
+                        dtype=[('maturity', 'datetime64[D]'),
+                                ('timestamp', np.float64),
+                                ('discount_factor', np.float64)])
+
+        self.points = self.points[0]
+        
+    def __len__(self):
+        if hasattr(self, 'pillars'):
+            return len(self.pillars)
+        else:
+            return 0
+
+    def __repr__(self):
+        return f"{self.key}; {self.ccy}; {self.valueDate.strftime('%Y-%m-%d')}; NumOfPillars:{len(self)} status:{self._built}"
         
     def Build(self,market=None):
 
@@ -36,20 +47,6 @@ class YieldCurve(Curve):
             result[pillar.label] = (shockedNpv-baseNpv)/(shockAmount * 10000)
         return pd.DataFrame(list(result.items()),columns= ['Pillar','Delta'])
 
-    def Dv01MatrixAtEachPillar(self, shockType, market = None, shockAmount= -0.0001, notional= 1e6):
-        baseNpv = {}
-        result = {}
-        discountCurve = self if self.key == self.discountCurve else market.GetMarketItem(self.discountCurve)
-        for pillar in self.pillars:
-            shockedCurve = self.CreateShockedCurve(shockType, shockAmount, market)
-            perRow = []
-            for instrument in self._addInstruments(market):
-                baseNpv = instrument.Valuation(self, discountCurve)
-                shockedNpv = instrument.Valuation(shockedCurve, shockedCurve)
-                perRow.append((shockedNpv-baseNpv)/(shockAmount * 10000))
-            result[pillar.label] = perRow
-        return pd.DataFrame(result)
-
 
     #Zero Shock
     def ShiftZero(self,shockAmount, pillarToShock = -1):
@@ -65,7 +62,7 @@ class YieldCurve(Curve):
                 dfShifted = RateConvention('Linear',yearFraction).RateToDf(shockAmount)[0] * df
                 pillar = DiscountFactor(maturityDate,dfShifted)
                 shiftedPillars.append(pillar)
-        return YieldCurve(shiftedKey,self.valueDate,self.ccy,shiftedPillars,self.discountCurve)
+        return YieldCurve(shiftedKey,self.valueDate,self.ccy,shiftedPillars,**{'discountCurve':self.discountCurve})
     #PillarShock
     def ShiftPillar(self, shockAmount, pillarToShock = -1, discountCurve = None):
         dC = self.key if discountCurve is None else discountCurve
@@ -74,7 +71,7 @@ class YieldCurve(Curve):
         for idx, pillar in enumerate(shiftedPillars):
             if pillarToShock == -1 or idx == pillarToShock:
                 pillar.Shock(shockAmount)
-        return YieldCurve(shiftedKey,self.valueDate,self.ccy, shiftedPillars,dC)
+        return YieldCurve(shiftedKey,self.valueDate,self.ccy, shiftedPillars,**{'discountCurve':dC})
 
 
     #Shock Curve wrapper
@@ -104,7 +101,7 @@ class YieldCurve(Curve):
         fwdPillars =[]
         dateAdjuster = DateAdjuster('unadjusted')
         maturity = self.pillars[-1].maturityDate
-        schedule = mkt.Schedule(self.valueDate,maturity,period,dateAdjuster)
+        schedule = Schedule(self.valueDate,maturity,period,dateAdjuster)
         schedule._create_schedule()
         startDates = schedule.periods['accrual_start']
         endDates = schedule.periods['accrual_end']
@@ -125,22 +122,13 @@ class YieldCurve(Curve):
 
         return fwdRateCurve
 
+
     #Shock curve on forward rates
     def ToFowardSpreadCurve(self, spreads, curveName, period = '3m', yearBasis = 'acton365f'):
         '''Adding a spread curve on yield curve on the fwd basis'''
-        fwdCurve = self.ToFowardRateCurve(period,yearBasis)
-        shiftedPillars = copy.deepcopy(fwdCurve.pillars)
-        for pillar in shiftedPillars:
-            if isinstance(spreads, PriceCurve):
-                spread = spreads.Price(pillar.startDate,spreads.interpMethod)
-                pillar.Shock(spread)
-            elif isinstance(spreads, float):
-                pillar.Shock(spreads)
-            else:
-                raise Exception (f'{spreads} type is not supported')
-
-        fwdSpreadCurve = YieldCurve(curveName,self.valueDate,self.ccy, shiftedPillars)
-        fwdSpreadCurve.Build()
+        label = self.key + 'fwdShifted'
+        params = XString(f'spreadCurve={spreads.key};periods={period};yearBasis={yearBasis};discountCurve={self.key}')
+        syc = SpreadYieldCurve(label,self.ccy, self.valueDate, **params._toDictionary('=',';'))
 
         return fwdSpreadCurve
 

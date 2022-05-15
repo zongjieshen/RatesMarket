@@ -1,10 +1,4 @@
-from Market.Dates import *
-from Market.Pillars import *
 from Market.Instruments import *
-import scipy.interpolate
-import scipy.optimize
-import pandas as pd
-import time
 
 class Swap(Instrument):
     def __init__(self, quote, curve, market = None, notional =1):
@@ -47,7 +41,7 @@ class BasisSwap(Swap):
         self.subType = 'basis'
 
     def SolveDf(self):
-        discountCurve = self.market.GetMarketItem(self.curve.discountCurve)
+        discountCurve = self.market[self.curve.discountCurve]
         guess = np.log(discountCurve.DiscountFactor(self.maturity))
         return scipy.optimize.newton(self._objectiveFunction, guess)
 

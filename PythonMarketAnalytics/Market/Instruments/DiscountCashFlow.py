@@ -1,8 +1,9 @@
 from Market.Instruments import *
-import scipy.interpolate
+import numpy as np
+
 #Leg modelling
 class DiscountCashFlow():
-    def __init__(self, ccy, schedule, notional, rate, indexType, yearBasis, projectCurve, discountCurve):
+    def __init__(self, ccy: str, schedule: Dates.Schedule, notional: float, rate: float, indexType: str, yearBasis: str, projectCurve, discountCurve):
         self.ccy = ccy
         self.schedule = schedule
         self.notional = notional
@@ -12,20 +13,22 @@ class DiscountCashFlow():
         self.projectCurve = projectCurve
         self.discount_curve = discountCurve
 
+    def _getPeriods(self):
+        periodStart = self.schedule.periods['accrual_start']
+        periodEnd = self.schedule.periods['accrual_end']
+        accural_periods = ScheduleDefinition.YearFractionList(periodStart, periodEnd, self.yearBasis)
+        return periodStart, periodEnd, accural_periods
+    def _discount(self, cashflows):
+        self.schedule.periods['cashflow'] = cashflows
+        payment_dates = self.schedule.periods['payment_date']
+        self.schedule.periods['PV'] = cashflows * self.discount_curve.DiscountFactor(payment_dates)
+        return self.schedule.periods['PV'].sum()
+
     def pv(self):
-        def _getPeriods():
-            periodStart = self.schedule.periods['accrual_start']
-            periodEnd = self.schedule.periods['accrual_end']
-            accural_periods = ScheduleDefinition.YearFractionList(periodStart, periodEnd, self.yearBasis)
-            return periodStart, periodEnd, accural_periods
-
+        periodStart, periodEnd, accural_periods = self._getPeriods()
         if self.indexType.lower() == 'fixed':
-            periodStart, periodEnd, accural_periods = _getPeriods()
-
             cashflows = self.rate * accural_periods * self.notional            
         elif self.indexType.lower() == 'floating':
-            periodStart, periodEnd, accural_periods = _getPeriods()
-
             dfStart = self.projectCurve.DiscountFactor(periodStart)
             dfEnd = self.projectCurve.DiscountFactor(periodEnd)
             fwd = (dfStart / dfEnd - 1)
@@ -36,7 +39,6 @@ class DiscountCashFlow():
                 fwd = self.__ois_fwd_rate(self.projectCurve, period)
                 cashflows.append(fwd * self.notional)
         elif self.indexType.lower() == 'basis':
-            periodStart, periodEnd, accural_periods = _getPeriods()
             dfStart = self.projectCurve.DiscountFactor(periodStart)
             dfEnd = self.projectCurve.DiscountFactor(periodEnd)
             fwd = (dfStart / dfEnd - 1) + self.rate * accural_periods
@@ -45,10 +47,8 @@ class DiscountCashFlow():
             return NotImplementedError
 
         cashflows[-1] += self.notional
-        self.schedule.periods['cashflow'] = cashflows
-        payment_dates = self.schedule.periods['payment_date']
-        self.schedule.periods['PV'] = cashflows * self.discount_curve.DiscountFactor(payment_dates)
-        return self.schedule.periods['PV'].sum()
+
+        return self._discount(cashflows)
 
 
 
@@ -93,9 +93,7 @@ class CPIIndexationFlow(DiscountCashFlow):
         prevNotional = notional
 
     def pv(self):
-        periodStart = self.schedule.periods['accrual_start']
-        periodEnd = self.schedule.periods['accrual_end']
-        accural_periods = ScheduleDefinition.YearFractionList(periodStart, periodEnd, self.yearBasis)
+        periodStart, periodEnd, accural_periods = self._getPeriods()
 
         prevKtFactor = self.notionalIndexFactor
         cashflows =[]
@@ -117,7 +115,45 @@ class CPIIndexationFlow(DiscountCashFlow):
 
             prevKtFactor = ktFactor
 
-        self.schedule.periods['cashflow'] = cashflows
-        payment_dates = self.schedule.periods['payment_date']
-        self.schedule.periods['PV'] = cashflows * self.discount_curve.DiscountFactor(payment_dates)
-        return self.schedule.periods['PV'].sum()
+        return self._discount(cashflows)
+
+
+class CDSFlow(DiscountCashFlow):
+    '''private class to calculate the premium and default leg of a CDS
+        premiumLeg = Notional * CouponRate * yearFrac * SurvivalProbability
+        defaultLeg = - Notional * (1 - RecoveryRate) * Incremental DefaultProbability
+        accruedInterest = Notional * YearFrac * CouponRate
+        NPV = premiumLeg + defaultLeg - accuredInterest'''
+
+    def __init__(self, ccy, schedule, notional, rate, indexType, yearBasis, projectCurve, 
+                discountCurve, recoveryRate, couponRate):
+        super(CDSFlow, self).__init__(ccy, schedule, notional, rate, indexType, yearBasis, projectCurve, discountCurve)
+        self.recoveryRate = recoveryRate
+        self.couponRate = couponRate
+        self.prevSurvivalProb = 1
+
+    def pv(self):
+        periodStart, periodEnd, accural_periods = self._getPeriods()
+        def _prevCouponDate(period,thisCouponDate):
+            return ScheduleDefinition.DateConvert(thisCouponDate) - ScheduleDefinition._parseDate(period)
+        
+        if self.indexType.lower() == 'premium':
+            survivalProb = self.projectCurve.SurvivalProbability(periodEnd)
+            cashflows = self.couponRate * accural_periods * self.notional * survivalProb
+            return self._discount(cashflows)
+        elif self.indexType.lower() == 'default':
+            survivalProbEnd = self.projectCurve.SurvivalProbability(periodEnd)
+            #Compute the default probability per period
+            survivalProbStart = np.insert(survivalProbEnd,0, 1)[:-1]
+            defaultProb = survivalProbStart - survivalProbEnd
+            cashflows = - self.notional * (1 - self.recoveryRate) * defaultProb
+            return self._discount(cashflows)
+        elif self.indexType.lower() == 'accruedinterest':
+            thisCouponDate = self.schedule.periods[0]['accrual_end']
+            prevCoupnDate = _prevCouponDate(self.schedule.period,thisCouponDate)
+            yearFrac = ScheduleDefinition.YearFraction(prevCoupnDate, self.schedule.valueDate, self.yearBasis)
+            accuredInterest = self.notional * yearFrac * self.couponRate
+            return accuredInterest
+        
+
+

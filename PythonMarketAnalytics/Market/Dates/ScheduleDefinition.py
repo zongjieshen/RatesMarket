@@ -38,6 +38,10 @@ class DateAdjuster():
         self.calendar = calendar
         self.adjustment = adjustment
 
+    def __str__(self):
+        return f'{self.calendar}'
+    def __repr__(self):
+        return f'{self.calendar}'
 
 class ScheduleDefinition():
     @staticmethod

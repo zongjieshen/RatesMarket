@@ -1,9 +1,4 @@
-from Market.Pillars import *
-from Market.Instruments import *
-from Market.Curve.YieldCurveFactory import *
-from Market.Curve.Curve import *
-import pandas as pd
-
+from Market.Curve import *
 
 class PriceCurve(Curve):
     def __init__(self, key,valueDate, ccy, pillars, **kwargs):
@@ -13,7 +8,6 @@ class PriceCurve(Curve):
         self.pillars = pillars
         
     def Build(self,market=None):
-        del self.points
 
         for pillar in self.pillars:
             #Re-construct points

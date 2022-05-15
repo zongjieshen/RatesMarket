@@ -1,60 +1,98 @@
 import pandas as pd
-import Market as mkt
-import multiprocessing as mp   
+from Market.DataManager import *
+from Market.Curve import *
+from Market.IndexFixing import *
+from Market.Dates import *
+from multiprocessing import Process, Manager
 from pathlib import Path
-
+import time
 
 class Market():
     def __init__(self, handleName, valueDate, filePath):
         self.handleName = handleName
-        self.valueDate = mkt.ScheduleDefinition.DateConvert(valueDate)
+        self.valueDate = ScheduleDefinition.DateConvert(valueDate)
         
         self.marketItems = {}
-    def worker(arg):
-        obj, market = arg
-        obj.Build(market)
-        return obj
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            if key.lower() in ['all',':']:
+                return list(self.marketItems.values())
+            elif key.lower() in self.marketItems:
+                return self.marketItems[key.lower()]
+            else:
+                raise Exception (f'{key} is not in the market {self.handleName}')
+        else:
+            raise TypeError (f'{key} has to be a string')
+
+    def __len__(self):
+        return len(self.marketItems)
+    
+    def __repr__(self):
+        return f'Name: {self.handleName}; Date: {self.valueDate}; NumOfItems: {len(self)}'
+
+    def __contains__(self, marketItem):
+        if isinstance(marketItem, str):
+            return True if marketItem.lower() in self.marketItems else False
+        else:
+            raise Exception(f'Only item key can be used to check')
+
+    def __add__(self, marketItem):
+        if isinstance(marketItem, (Curve, IndexFixing)):
+            self.marketItems[marketItem.key.lower()] = marketItem
+        else:
+            raise TypeError(f'type of {marketItem} is incorrect')
+
+
+    def _worker(itemList,dic, market):
+        '''Internal worker function for multi-processing'''
+        def _checkDep(item, dic, dependencies = ['discountCurve','spreadCurve']):
+            flags = [False] * len(dependencies)
+            for idx, dep in enumerate(dependencies):
+                dependencyValue = getattr(item, dep, item.key)
+                if dependencyValue == item.key:
+                    flags[idx] = True
+                elif dependencyValue != item.key and dependencyValue.lower() in dic and dic[dependencyValue.lower()]._built is True:
+                    flags[idx] = True
+            return all(flag is True for flag in flags)
+
+        while len(itemList) != 0:
+            item = itemList.pop(0)
+            if item.key not in dic and _checkDep(item, market.marketItems) is True:
+                item.Build(market)
+                print(f'{item.key} build status is {item._built}')
+                dic[item.key.lower()] = item
+                market + item
+            else:
+                itemList.append(item)
+    
+
     def _build(self):
         #Check if all dependencies exist before passing into the recursive sorting function
         for item in self.marketItems.values():
             if next((x for x in self.marketItems.values() if x.key == item.discountCurve), None) is None:
                 raise Exception(f'{item.discountCurve} curve doesnt exist in the market list')
 
-        def _sortMarket(marketItemList, dependency, newList = None):
-            marketItemList.sort(key=lambda r: hasattr(r,dependency) is False or r.key == getattr(r,dependency), reverse = True)
-            if newList is None:
-                newList =[]
-            if len(marketItemList) ==0:
-                return newList
-            
-            for item in marketItemList:
-                if hasattr(item,dependency) is False or item.key == getattr(item,dependency) and item not in newList:
-                   newList.append(item)
-                   marketItemList.remove(item)
-                   break
-                elif item.key != getattr(item,dependency) and next((x for x in newList if x.key == getattr(item,dependency)), None) is not None:
-                   newList.append(item)
-                   marketItemList.remove(item)
-                   break
-                else:
-                    marketItemList.append(marketItemList.pop(0))
-                    break
-            return _sortMarket(marketItemList, dependency, newList)
+        marketList = list(self.marketItems.values())
 
-        sortedMarketList = _sortMarket(list(self.marketItems.values()), 'discountCurve')
-        sortedMarketList = _sortMarket(sortedMarketList, 'spreadCurve')
-        #TODO MultiProcessing
+        #Market._worker(marketList, {},self)
 
-        #marketItems = sorted(self.marketItems.values(), key=lambda x: (x.key != x.discountCurve))
-        #with mp.Pool(processes=4) as pool:
-            #listtest = pool.map(Market.worker, ((obj,self) for obj in marketItems))
+        tic = time.time()
+        with Manager() as manager:
+            dic = manager.dict()
 
-        for marketItem in sortedMarketList:
-           marketItem.Build(self)
-           print(f'{marketItem.key} build status is {marketItem._built}')
+            p = Process(target=Market._worker, args=(marketList,dic, self))
+            p.start()
+            p.join()
 
-        
+            self.marketItems = dict(dic)
+        toc = time.time()
+        print('Done in {:.4f} seconds'.format(toc-tic))
 
+        #tic = time.time()
+        #Market._worker(marketList, {},self)
+        #toc = time.time()
+        #print('Done in {:.4f} seconds'.format(toc-tic))
 
     def GetItems(self):
         if len(self.marketItems)  < 1:
@@ -65,22 +103,9 @@ class Market():
                 itemList.append((item.ccy + '|'+ item.__class__.__name__, item.key))
         return pd.DataFrame(itemList,columns = ['Currency|ItemType','Items'])
 
-    def AddorUpdateItem(self,marketItem):
-        if marketItem.key in self.marketItems:
-            self.marketItems.pop(marketItem.key)
-            self.marketItems[marketItem.key] = marketItem
-        else:
-            self.marketItems[marketItem.key] = marketItem
-
-    def GetMarketItem(self,curveKey):
-        if curveKey.lower() in self.marketItems:
-            return self.marketItems[curveKey.lower()]
-        else:
-            return Exception (f'{curveKey} does not exist in the Market {self.handleName}')
-
     def YcShock(self,ycKey,shockType,shockAmount,pillarToShock=-1):
         shockedYc = self.marketItems[ycKey].CreateShockedCurve(shockType,shockAmount,pillarToShock,self)
-        self.AddorUpdateItem(shockedYc)
+        self + shockedYc
 
             
 class MarketFactory():
@@ -91,31 +116,33 @@ class MarketFactory():
         ycDf=pd.read_excel(filePath,sheet_name='YieldCurve')
         icDf=pd.read_excel(filePath,sheet_name='InflationCurve')
         ifDf = pd.read_excel(filePath,sheet_name='IndexFixing')
+        ccDf = pd.read_excel(filePath,sheet_name='CreditCurve')
         market = Market(handleName, valueDate, filePath)
         if buildItems is None:
-            market._itemsToBuild = mkt.MarketDataManager.baseMarket()
+            market._itemsToBuild = MarketDataManager.baseMarket()
         else:
-            market._itemsToBuild = mkt.MarketDataManager.FromExcelArray(buildItems)
+            market._itemsToBuild = MarketDataManager.FromExcelArray(buildItems)
 
         for item in market._itemsToBuild:
             itemType = item.itemType
             if item.build == False or not item.label:
                 continue
             elif itemType.lower() == 'yieldcurve':
-                marketItem = mkt.YieldCurveFactory.Creat(ycDf,item,market.valueDate,item.build)
+                marketItem = YieldCurveFactory.Creat(ycDf,item,market.valueDate,item.build)
             elif itemType.lower() == 'inflationcurve':
-                marketItem = mkt.InflationCurveFactory.Creat(icDf,item,market.valueDate,item.build)
+                marketItem = InflationCurveFactory.Creat(icDf,item,market.valueDate,item.build)
             elif itemType.lower() == 'indexfixing':
-                marketItem = mkt.IndexFixingFactory.Creat(ifDf,item,market.valueDate,item.build)
+                marketItem = IndexFixingFactory.Creat(ifDf,item,market.valueDate,item.build)
             elif itemType.lower() == 'pricecurve':
-                marketItem = mkt.PriceCurveFactory.Creat(ycDf,item,market.valueDate,item.build)
+                marketItem = PriceCurveFactory.Creat(ycDf,item,market.valueDate,item.build)
             elif itemType.lower() == 'spreadyieldcurve':
-                marketItem = mkt.SpreadYieldCurveFactory.Creat(item,market.valueDate,item.build)
+                marketItem = SpreadYieldCurveFactory.Creat(item,market.valueDate,item.build)
+            elif itemType.lower() == 'creditcurve':
+                marketItem = CreditCurveFactory.Creat(ccDf, item,market.valueDate,item.build)
             else:
                 return NotImplementedError
 
-            if marketItem:
-                market.marketItems[marketItem.key.lower()] = marketItem
+            market + marketItem
 
         market._build()
         return market

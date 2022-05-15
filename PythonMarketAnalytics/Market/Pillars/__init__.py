@@ -5,4 +5,5 @@ from Market.Pillars.SwapRate import *
 from Market.Pillars.Factor import *
 from Market.Pillars.RateConvention import *
 from Market.Pillars.Spread import *
+from Market.Pillars.CreditDefaultSwapRate import *
 

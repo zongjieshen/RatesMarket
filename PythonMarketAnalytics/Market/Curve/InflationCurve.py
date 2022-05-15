@@ -1,9 +1,5 @@
-import Market as mkt
-from Market.Curve.Curve import *
-import pandas as pd
+from Market.Curve import *
 import scipy.interpolate
-import time
-
 
 class InflationCurve(Curve):
     def __init__(self, key,valueDate, ccy, pillars, **kwargs):
@@ -15,15 +11,13 @@ class InflationCurve(Curve):
         
 
     def Build(self,market=None):
-        indexFixing = market.GetMarketItem(self.indexFixingKey)
+        indexFixing = market[self.indexFixingKey]
         self.initialCPI = indexFixing.LastFixing()
         #Remove the instrument if the indexation period of maturity is already known
         for idx, instrument in enumerate(self._addInstruments(market)):
             if ScheduleDefinition.EndOfMonthAdj(instrument.maturity,instrument.indexLag) <= self.initialCPI.maturityDate:
-                print(f'{instrument.key} maturity date {instrument.maturity} + indexlag {instrument.indexLag} is before the IndexFixing last known date {self.initialCPI.maturityDate}')
+                print(f"{instrument.key} maturity date {instrument.maturity.strftime('%Y-%m-%d')} {instrument.indexLag} (indexlag) is before the IndexFixing last known date {self.initialCPI.maturityDate.strftime('%Y-%m-%d')}")
                 self.pillars.pop(idx)
-
-        del self.points
 
         fixings = []
         #Add past index fixings to the curve

@@ -1,10 +1,10 @@
-import Market as mkt
 import pandas as pd
 
 class IndexFixing():
     def __init__(self, key, ccy, pillars):
         self.key = key
         self.ccy = ccy
+        self._built = True
         self.discountCurve = self.key #Add this to ensure the market check doesnt fail
         self.spreadCurve = self.key
 
@@ -13,7 +13,7 @@ class IndexFixing():
         
     def Build(self,market=None):
         # No boostrap required
-        self._built = True
+        pass
 
     def LastFixing(self):
         return self.pillars[-1]

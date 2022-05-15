@@ -1,6 +1,4 @@
-import Market as mkt
-import numpy as np
-import datetime
+from Market.Curve import *
 
 class PriceCurveFactory:
     """Factory to add rates to the price curve class"""
@@ -21,10 +19,10 @@ class PriceCurveFactory:
         pillars = []
         try:
             for index, row in df.iterrows():
-                pillars.append(mkt.Spread.fromRow(row, valueDate))
+                pillars.append(Spread.fromRow(row, valueDate))
         except Exception as exp:
             raise Exception(exp)
 
-        return mkt.PriceCurve(key,valueDate,ccy,pillars,**params)
+        return PriceCurve(key,valueDate,ccy,pillars,**params)
 
 

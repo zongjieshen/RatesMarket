@@ -18,6 +18,8 @@ class Rate():
         self.paymentFrequency = paymentFrequency
         self.dateAdjuster = dateAdjuster
 
+    def __repr__(self):
+        return f"Label:{self.label}; StartDate:{self.startDate.strftime('%Y-%m-%d')}; MaturityDate:{self.maturityDate.strftime('%Y-%m-%d')}; Ccy:{self.ccy}; Rate:{self.rate}; PaymentFrequency: {self.paymentFrequency}; YearBasis:{self.yearBasis}; Calendar:{self.dateAdjuster}"
 
     @abc.abstractmethod
     def fromRow():

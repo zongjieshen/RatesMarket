@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 class Constants:
     Adjustments = {'unadjusted','following','modified following','preceding'}
     YearBasis = {'acton360','acton365f','30360','30e360','equalcoupons','actonact'}
-    ItemType = {'yieldcurve','pricecurve','indexfixing','spreadyieldcurve','inflationcurve'}
-    InterpMethod = {'linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous', 'next', 'zero', 'slinear', 'quadratic', 'cubic'}
+    ItemType = {'yieldcurve','pricecurve','indexfixing','spreadyieldcurve','inflationcurve','creditcurve'}
+    InterpMethod = {'linear', 'nearest', 'nearest-up', 'zero', 'slinear', 'quadratic', 'cubic', 'previous', 'next'}
     RateConvention = {'zero','linear','annual','semiannual','monthly','quarterly'}
 
 

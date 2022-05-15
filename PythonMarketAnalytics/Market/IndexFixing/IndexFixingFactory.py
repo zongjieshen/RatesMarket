@@ -1,6 +1,7 @@
-import Market as mkt
 import numpy as np
 import datetime
+from Market.IndexFixing.IndexFixings import *
+from Market.Pillars import *
 
 class IndexFixingFactory:
     """Factory to add cpi factor to the index fixing class"""
@@ -20,14 +21,14 @@ class IndexFixingFactory:
     def _ifCreate(df, key, ccy):
         pillars = []
         for index, row in df.iterrows():
-            pillar = mkt.FixingRate.fromRow(row)
+            pillar = FixingRate.fromRow(row)
             pillars.append(pillar)
             #Throw error if duplicate maturity pillars
             for pillar in pillars:
                 if sum(p.maturityDate == pillar.maturityDate for p in pillars) > 1:
                     raise Exception(f'{pillar.label} {pillar.maturityDate} has another pillar having the same maturity')
 
-        return mkt.IndexFixing(key,ccy,pillars)
+        return IndexFixing(key,ccy,pillars)
 
 
 

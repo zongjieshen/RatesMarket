@@ -1,4 +1,4 @@
-import Market.Dates as Dates
+from Market.Dates import *
 #base class
 class Factor():
     def __init__(self, maturityDate, value):
@@ -17,7 +17,7 @@ class FixingRate(Factor):
 
     @classmethod
     def fromRow(cls, row):
-        Date = Dates.ScheduleDefinition.DateConvert(row["Date"])
+        Date = ScheduleDefinition.DateConvert(row["Date"])
         value = row["Value"]
         return cls(Date, value)
 

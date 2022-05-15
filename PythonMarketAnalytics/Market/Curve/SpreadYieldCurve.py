@@ -1,8 +1,4 @@
-from Market.Pillars import *
-from Market.Curve.YieldCurve import *
-from Market.Curve.Curve import *
-from Market.Curve.PriceCurve import *
-
+from Market.Curve import *
 
 class SpreadYieldCurve(YieldCurve):
     def __init__(self, key, ccy,valueDate, **kwargs):
@@ -15,11 +11,19 @@ class SpreadYieldCurve(YieldCurve):
         self.periods = kwargs.get('periods',None)
         self.yearBasis = kwargs.get('yearbasis',None)
         self.spreadCurve = kwargs.get('spreadcurve',None)
+        self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
+                        ScheduleDefinition.DateOffset(self.valueDate),
+                        np.log(self.initialFactor))],
+                        dtype=[('maturity', 'datetime64[D]'),
+                                ('timestamp', np.float64),
+                                ('discount_factor', np.float64)])
+
+        self.points = self.points[0]
 
 
     def Build(self,market):
-        yc = market.GetMarketItem(self.discountCurve)
-        spreads = market.GetMarketItem(self.spreadCurve)
+        yc = market[self.discountCurve.lower()]
+        spreads = market[self.spreadCurve.lower()]
 
         fwdCurve = yc.ToFowardRateCurve(self.periods, self.yearBasis)
         self.pillars = copy.deepcopy(fwdCurve.pillars)

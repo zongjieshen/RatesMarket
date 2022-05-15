@@ -1,5 +1,5 @@
 from Market.Pillars import *
-import Market.Dates as Dates
+from Market.Dates import *
 
 
 #Deposit Rate
@@ -12,8 +12,8 @@ class DepositRate(Rate):
     def fromRow(cls, row, valueDate):
         calendar = row["Calendar"]
         dateAdjuster = DateAdjuster('modified following', calendar)
-        startDate = Dates.ScheduleDefinition.DateConvert(row["StartDate"], valueDate,dateAdjuster)
-        maturityDate = Dates.ScheduleDefinition.DateConvert(row["Maturity"], valueDate,dateAdjuster)
+        startDate = ScheduleDefinition.DateConvert(row["StartDate"], valueDate,dateAdjuster)
+        maturityDate = ScheduleDefinition.DateConvert(row["Maturity"], valueDate,dateAdjuster)
         ccy = row["Currency"]
         label = row["Label"]
         rateConvention = row["RateConvention"]

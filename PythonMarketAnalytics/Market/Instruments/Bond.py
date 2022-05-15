@@ -1,9 +1,4 @@
-from Market.Dates import *
-from Market.Pillars import *
 from Market.Instruments import *
-import scipy.interpolate
-import scipy.optimize
-import pandas as pd
 
 class Bond(Instrument):
     def __init__(self, quote, curve, market = None, notional =1):
@@ -77,6 +72,8 @@ class IndexedBond(Bond):
         
 
     def SolveDf(self):
+        if self.market is None:
+            raise Exception(f'Discount Curve is required to calibrate the BEI curve')
         yearFraction = ScheduleDefinition.YearFraction(self.startDate,self.maturity,self.yearBasis)
         rateConvention = RateConvention(self.rateConvention,yearFraction)
         guess = np.log(self.curve.initialCPI.value / rateConvention.RateToDf(self.rate))
@@ -95,8 +92,8 @@ class IndexedBond(Bond):
                                           ScheduleDefinition.DateOffset(maturity),
                                           guess)],
                                         dtype=self.curve.points.dtype))
-
-        discountCurve = self.market.GetMarketItem(self.curve.discountCurve)
+        #TODO
+        discountCurve = self.market[self.curve.discountCurve]
 
         pv = self.Valuation(temp_curve,discountCurve)
         targetPv = self.DirtyPrice()
@@ -123,8 +120,7 @@ class IndexedBond(Bond):
         return notionalIndexation * (1 + pValue / 100)
 
     def DirtyPrice(self):
-        
-        indexFixing = self.market.GetMarketItem(self.indexFixingKey)
+        indexFixing = self.market[self.indexFixingKey]
 
         nextCouponDate = ScheduleDefinition.DateConvert(self.schedule.periods[0]['accrual_end'])
         prevCoupnDate = ScheduleDefinition.DateConvert(self.schedule.periods[0]['accrual_start'])

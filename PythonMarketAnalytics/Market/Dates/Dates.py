@@ -1,8 +1,6 @@
 import holidays
-import datetime
 import numpy as np
 import pandas as pd
-from enum import Enum
 from Market.Dates.ScheduleDefinition import *
 
 class Schedule:
@@ -28,17 +26,15 @@ class Schedule:
         '''
         self._period_starts = [self.valueDate] + self._gen_dates()[:-1]
         self._adjusted_period_ends = self._gen_dates()
-        self._fixing_dates = self._gen_date_adjustments(self._adjusted_period_ends)
         self._payment_dates = self._gen_dates()
 
-        arrays = self._np_dtarrays(self._fixing_dates, self._period_starts,
+        arrays = self._np_dtarrays(self._period_starts,
                                    self._adjusted_period_ends,
                                    self._payment_dates)
-        arrays = (arrays + (np.zeros(len(self._fixing_dates), dtype=np.float64),) +
-                  (np.zeros(len(self._fixing_dates), dtype=np.float64),))
+        arrays = (arrays + (np.zeros(len(self._period_starts), dtype=np.float64),) +
+                  (np.zeros(len(self._period_starts), dtype=np.float64),))
         self.periods = np.rec.fromarrays((arrays),
-                                         dtype=[('fixing_date', 'datetime64[D]'),
-                                                ('accrual_start', 'datetime64[D]'),
+                                         dtype=[('accrual_start', 'datetime64[D]'),
                                                 ('accrual_end', 'datetime64[D]'),
                                                 ('payment_date', 'datetime64[D]'),
                                                 ('cashflow', np.float64), 

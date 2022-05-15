@@ -1,6 +1,4 @@
-import Market as mkt
-import numpy as np
-import datetime
+from Market.Curve import *
 
 class InflationCurveFactory:
     """Factory to add rates to the inflation curve class"""
@@ -27,7 +25,7 @@ class InflationCurveFactory:
                 elif pillarType == 'InflationSwapRate':
                     pass
                 elif pillarType == 'BondYield':
-                    pillar = mkt.BondYield.fromRow(row, 'CapitalIndexed', valueDate)
+                    pillar = BondYield.fromRow(row, 'CapitalIndexed', valueDate)
                     pillar.indexFixingKey = params['indexfixing']
                     pillars.append(pillar)
                 elif pillarType == 'BondPrice':
@@ -41,7 +39,7 @@ class InflationCurveFactory:
         except Exception as exp:
             raise Exception(exp)
 
-        return mkt.InflationCurve(key,valueDate,ccy,pillars,**params)
+        return InflationCurve(key,valueDate,ccy,pillars,**params)
 
 
 

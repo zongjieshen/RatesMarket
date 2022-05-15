@@ -1,14 +1,20 @@
-import Market.Dates as Dates
+from Market.Dates import *
 from Market.Pillars import *
 from Market.Instruments import *
-from Market.IndexFixing import *
+from Market.Curve import *
 from Market.Util import Constants, OneOf
 import pandas as pd
 import numpy as np
-import abc
+from abc import ABC, abstractmethod
 import copy
 
-class Curve():
+class MarketItem(ABC):
+
+    @abstractmethod
+    def Build(self):
+        return NotImplementedError
+
+class Curve(MarketItem):
     interpMethod = OneOf(Constants.InterpMethod)
 
     def __init__(self, key, ccy, valueDate, **kwargs):
@@ -21,19 +27,9 @@ class Curve():
         self.initialFactor = kwargs.get('initialFactor',1)
 
         self._built = False
-        self.points = np.array([(np.datetime64(self.valueDate.strftime('%Y-%m-%d')),
-                                ScheduleDefinition.DateOffset(self.valueDate),
-                                np.log(self.initialFactor))],
-                              dtype=[('maturity', 'datetime64[D]'),
-                                     ('timestamp', np.float64),
-                                     ('discount_factor', np.float64)])
 
-        self.points = self.points[0]
-
-
-    @abc.abstractmethod
-    def Build(self):
-        return NotImplementedError
+    def __repr__(self):
+        return f"{self.key}; {self.ccy}; {self.valueDate.strftime('%Y-%m-%d')}; status:{self._built}"
 
     def DiscountFactor(self, dates, returndf = False):
         '''Returns the interpolated discount factor for an arbitrary date
@@ -43,8 +39,6 @@ class Curve():
             dates = np.asarray(dates)
         if isinstance(dates,np.ndarray) is False:
             dates = np.asarray([dates])
-        #if all(isinstance(item, (datetime.datetime, np.datetime64)) for item in dates):
-        #    dates = np.array(pd.to_datetime(dates))
         interpolator = scipy.interpolate.interp1d(self.points['timestamp'],
                                                   self.points['discount_factor'],
                                                   kind=self.interpMethod,
@@ -56,7 +50,7 @@ class Curve():
             dt.set_index('Dates',inplace=True)
             return dt
         else:
-            return np.exp(interpolator(dates.astype('<M8[s]')))
+            return values
     
     def ZeroRates(self, dates, yearBasis = 'acton365f', rateConvention = 'linear'):
         if isinstance(dates, list) == False:
@@ -85,7 +79,7 @@ class Curve():
     def SwapRates(self,dates, tenor, yearBasis = 'acton365f', rateConvention = 'linear', adjustment = 'modified following', calendar = 'SYD'):
         def _sumproduct(date):
                 dateAdjuster = DateAdjuster(adjustment, calendar)
-                schedule = mkt.Schedule(self.valueDate,date,tenor,dateAdjuster)
+                schedule = Schedule(self.valueDate,date,tenor,dateAdjuster)
                 schedule._create_schedule()
                 periodStart = schedule.periods['accrual_start']
                 periodEnd  = schedule.periods['accrual_end']
@@ -114,16 +108,22 @@ class Curve():
         charts = []
 
         for curve in curves:
-            if isinstance(curve, IndexFixing) == True:
+            if isinstance(curve, IndexFixing):
                 continue
-            if returnType.lower().startswith ('zero'):
-                charts.append(curve.ZeroRates(dates, yearBasis, rateConvention))
-            elif returnType.lower().startswith('fwd'):
-                charts.append(curve.FwdRates(dates, tenor, yearBasis, rateConvention))
-            elif returnType.lower().startswith ('swaprate'):
-                charts.append(curve.SwapRates(dates, tenor, yearBasis, rateConvention))
-            else:
-                charts.append(curve.DiscountFactor(dates,returndf = True))
+            if isinstance(curve, YieldCurve):
+                if returnType.lower().startswith ('zero'):
+                    charts.append(curve.ZeroRates(dates, yearBasis, rateConvention))
+                elif returnType.lower().startswith('fwd'):
+                    charts.append(curve.FwdRates(dates, tenor, yearBasis, rateConvention))
+                elif returnType.lower().startswith ('swaprate'):
+                    charts.append(curve.SwapRates(dates, tenor, yearBasis, rateConvention))
+                else:
+                    charts.append(curve.DiscountFactor(dates,returndf = True))
+            elif isinstance(curve, CreditCurve):
+                if returnType.lower().startswith ('survival'):
+                    charts.append(curve.SurvivalProbability(dates, True))
+                elif returnType.lower().startswith('hazard'):
+                    charts.append(curve.HazardRates(dates, yearBasis, rateConvention))
         return pd.concat(charts,axis=1)
 
     def view(self, ret=False):
@@ -157,3 +157,5 @@ class Curve():
                 yield (Swap(pillar, self, market))
             elif pillar.quoteType == 'BasisSwapRate':
                 yield (BasisSwap(pillar, self, market))
+            elif pillar.quoteType == 'CreditDefaultSwapRate':
+                yield (CreditDefaultSwap(pillar, self, market))

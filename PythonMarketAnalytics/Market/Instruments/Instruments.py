@@ -1,6 +1,7 @@
 from Market.Dates import *
 from Market.Pillars import *
-import pandas as pd
+from Market import Market
+import scipy.optimize
 import copy
 import abc
 
@@ -35,8 +36,8 @@ class Instrument():
                                           guess)],
                                         dtype=self.curve.points.dtype))
 
-        if self.market is not None and self.curve.discountCurve != '' and self.market.GetMarketItem(self.curve.discountCurve)._built == True:
-            discountCurve = self.market.GetMarketItem(self.curve.discountCurve)
+        if isinstance(self.market, Market.Market) and self.curve.discountCurve != self.curve.key and self.market[self.curve.discountCurve]._built == True:
+            discountCurve = self.market[self.curve.discountCurve]
         else:
             discountCurve = temp_curve
 

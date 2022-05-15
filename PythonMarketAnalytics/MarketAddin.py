@@ -7,15 +7,13 @@ Handles ={}
 if __name__ == '__main__':
     valueDate = pd.to_datetime('31/12/2021')
     baseMarket = mkt.MarketFactory.Create('baseMarket',valueDate)
-    curve = baseMarket.GetMarketItem('AUDBondGov')
-    iaaCurve = baseMarket.GetMarketItem('IaaSpread')
-    fwdCurve = curve.ToFowardSpreadCurve(iaaCurve, 'IaaCurve')
+    curve = baseMarket['AUDBondGov']
+    audswapCurve = baseMarket['AUDSwap']
+    dv01 = audswapCurve.Dv01AtEachPillar('pillar')
+    #fwdCurve = curve.ToFowardSpreadCurve(iaaCurve, 'IaaCurve')
     #aud3mcurve = baseMarket.marketItems['AUDSwap3m']
    # baseMarket.YcShock('AUDSwap3m','pillar',0.0001)
-    #swapdate = pd.to_datetime('31/12/2021')
-    #date_list = [swapdate + dateutil.relativedelta.relativedelta(months=3*x) for x in range(10)] 
-    #test =  mkt.Curve.Charts(curve, 'swaprates', date_list,'3m')
-    fwdCurve.view()
+    #fwdCurve.view()
     #aud3mcurve.view()
     xw.serve()
 
@@ -48,7 +46,7 @@ def ScheduleCreate(valueDate, maturity, period, adjustment = 'unadjusted',calend
 @xw.func
 @xw.arg('buildItems', pd.DataFrame, index=False, header=True)
 def MarketCreate(handlename, valueDate, filepath = None, buildItems = None, useCache = True):
-    """Creates a market in memory, given set of market items"""
+    '''Creates a market in memory, given set of market items'''
     if handlename in Handles and useCache is True:
         return handlename
     else:
@@ -60,10 +58,21 @@ def MarketCreate(handlename, valueDate, filepath = None, buildItems = None, useC
 @xw.func
 @xw.ret(index=False, header=True, expand='table')
 def MarketChartPoints(marketHandle,curveName, ratesType, dates ,tenor):
+    '''Returns DF, ZeroRates, SwapRates in the chart based on a schedule created'''
     dates = mkt.ScheduleDefinition.DateConvert(dates)
     market = Handles[marketHandle]
-    curves = market.GetMarketItem(curveName)
-    df = mkt.YieldCurve.Charts(curves,ratesType, dates ,tenor)
+    curve = market[curveName]
+    df = mkt.YieldCurve.Charts(curve,ratesType, dates ,tenor)
+    return df
+
+@xw.func
+@xw.ret(index=False, header=True, expand='table')
+def CreditCurveChartPoints(marketHandle,curveName, ratesType, dates ,tenor):
+    '''Returns DF, ZeroRates, SwapRates in the chart based on a schedule created'''
+    dates = mkt.ScheduleDefinition.DateConvert(dates)
+    market = Handles[marketHandle]
+    curves = market[curveName]
+    df = mkt.CreditCurve.Charts(curves,ratesType, dates ,tenor)
     return df
 
 @xw.func
@@ -76,9 +85,10 @@ def MarketItems(marketHandle):
 @xw.ret(index=False, header=True, expand='table')
 def MarketItemPillars(marketHandle, curveName):
     market = Handles[marketHandle]
-    curve = market.GetMarketItem(curveName)
+    curve = market[curveName]
     pillars = [pd.DataFrame([pillar.__dict__]) for pillar in curve.pillars]
     dt = pd.concat(pillars)
+    dt.rename(columns = {'dateAdjuster':'calendar'}, inplace = True)
     dt['startDate'] = dt['startDate'].dt.strftime('%d/%m/%Y')
     dt['maturityDate'] = dt['maturityDate'].dt.strftime('%d/%m/%Y')
     return dt
@@ -87,7 +97,7 @@ def MarketItemPillars(marketHandle, curveName):
 @xw.ret(index=False, header=True, expand='table')
 def MarketDv01AtEachPillar(marketHandle, curveName, shockType, shockAmount= -0.0001, notional= 1e6):
     market = Handles[marketHandle]
-    curve = market.GetMarketItem(curveName)
+    curve = market[curveName]
     return curve.Dv01AtEachPillar(shockType, market, shockAmount, notional)
     
 

@@ -2,14 +2,14 @@ from Market.Pillars import *
 from Market.Dates import *
 
 #SwapRate
-class SwapRate(Rate):
+class CreditDefaultSwapRate(Rate):
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,dateAdjuster,compoundFrequency,paymentDelay):
-        super(SwapRate, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
+                   yearBasis, rate, paymentFrequency,dateAdjuster,couponRate, recoveryRate):
+        super(CreditDefaultSwapRate, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
                    yearBasis, rate, paymentFrequency,dateAdjuster)
-        self.compoundFrequency = compoundFrequency
-        self.paymentDelay = paymentDelay
-        self.quoteType = 'SwapRate'
+        self.couponRate = couponRate
+        self.recoveryRate = recoveryRate
+        self.quoteType = 'CreditDefaultSwapRate'
 
     @classmethod
     def fromRow(cls, row, valueDate):
@@ -22,16 +22,12 @@ class SwapRate(Rate):
         rateConvention = row["RateConvention"]
         yearBasis = row["YearBasis"]
         rate = row["Value"]
+        couponRate = row["Coupon"]
         paymentFrequency = row["PaymentFrequency"]
-        compoundFrequency = row['CompoundingFrequency']
-        paymentDelay = row["PaymentDelay"]
+        recoveryRate = row["RecoveryRate"]
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,dateAdjuster,compoundFrequency,paymentDelay)
+                   yearBasis, rate, paymentFrequency,dateAdjuster,couponRate, recoveryRate)
 
-class BasisSwapRate(SwapRate):
-    def __init__(self, *args, **kwargs):
-        super(BasisSwapRate, self).__init__(*args, **kwargs)
-        self.quoteType = 'BasisSwapRate'
 
 
 
