@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from Market.Util import Constants, OneOf
+from market.util import Constants, OneOf
 
 #RateConvention class
 class RateConvention():

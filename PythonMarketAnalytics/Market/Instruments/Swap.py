@@ -1,4 +1,4 @@
-from Market.Instruments import *
+from market.instruments import *
 
 class Swap(Instrument):
     def __init__(self, quote, curve, market = None, notional =1):

@@ -1,3 +1,1 @@
-from Market.DataManager.MarketDataManager import *
-
-
+from market.datamanager.market_data_manager import *

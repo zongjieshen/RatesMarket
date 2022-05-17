@@ -4,8 +4,8 @@ VERSION = '0.2'
 LICENSE = 'MIT'
 
 setup(
-        name='Market',
-        packages=['Market'],
+        name='market',
+        packages=['market'],
         version=VERSION,
         license=LICENSE,
         install_requires=[

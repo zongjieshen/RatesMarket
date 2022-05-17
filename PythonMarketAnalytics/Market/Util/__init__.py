@@ -1,4 +1,4 @@
-from Market.Util.Extension import *
-from Market.Util.Descriptor import *
+from market.util.extension import *
+from market.util.descriptor import *
 
 

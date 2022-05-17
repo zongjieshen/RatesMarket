@@ -1,8 +1,0 @@
-setup.py
-Market/Market.py
-Market/__init__.py
-Market.egg-info/PKG-INFO
-Market.egg-info/SOURCES.txt
-Market.egg-info/dependency_links.txt
-Market.egg-info/requires.txt
-Market.egg-info/top_level.txt

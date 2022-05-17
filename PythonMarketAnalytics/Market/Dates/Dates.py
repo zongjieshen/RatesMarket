@@ -1,7 +1,7 @@
 import holidays
 import numpy as np
 import pandas as pd
-from Market.Dates.ScheduleDefinition import *
+from market.dates.schedule_definition import *
 
 class Schedule:
     '''Schedule fixing, accrual, and payment dates
