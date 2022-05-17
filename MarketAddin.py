@@ -12,9 +12,9 @@ if __name__ == '__main__':
     audSwap = baseMarket['AUDSwap']
     dv01 = audSwap.Dv01AtEachpillar('pillar')
     iaaSpread = baseMarket['iaaspread']
-    fwdShockedCurve = curve.CreateShockedCurve('zero',shockAmount = 0.0001, period = '3m', yearBasis = 'acton365f')
+    fwdShockedCurve = audSwap.CreateShockedCurve('zero',shockAmount = 0.0001, period = '3m', yearBasis = 'acton365f')
     df = mkt.Charts([audSwap,fwdShockedCurve], 'fwd', date_list,'3m')
-    fwdShockedCurve = mkt.ToFowardSpreadCurve(curve,iaaSpread, 'IaaCurve')
+    fwdShockedCurve = mkt.ToFowardSpreadCurve(audSwap,iaaSpread, 'IaaCurve')
     #aud3mcurve = basemarket.marketItems['AUDSwap3m']
    # basemarket.YcShock('AUDSwap3m','pillar',0.0001)
     #fwdCurve.view()
