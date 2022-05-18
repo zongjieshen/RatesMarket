@@ -29,7 +29,7 @@ baseMarket.GetItems()
 
 ![](2022-05-16-13-31-51.png)
 
-### Excel
+#### Excel
 
 In Excel after the xlwings Ribbon is loaded, click Import functions and type the formula
 ```
