@@ -1,8 +1,9 @@
-from market.instruments.instrument_base import *
-from market.instruments.discount_cashflow import *
-from market.instruments.deposit_rate import *
-from market.instruments.bond import *
-from market.instruments.swap import *
-from market.instruments.credit_default_swap import *
-from market.instruments.xinstrument import *
+from .instrument_base import *
+from .discount_cashflow import *
+from .deposit_rate import *
+from .bond import *
+from .swap import *
+from .credit_default_swap import *
+from .xinstrument import *
+import numpy as np
 

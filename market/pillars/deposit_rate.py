@@ -7,6 +7,10 @@ class DepositRate(Rate):
         super(DepositRate, self).__init__(*args, **kwargs)
         self.quoteType = 'DepositRate'
 
+    def __repr__(self):
+        return (f"DepositRate('{self.startDate.strftime('%Y-%m-%d')}', '{self.maturityDate.strftime('%Y-%m-%d')}', '{self.ccy}', '{self.label}', "
+                f"'{self.rateConvention}', '{self.yearBasis}', {self.rate}, '{self.paymentFrequency}', '{self.calendar}')")
+
     @classmethod
     def fromRow(cls, row, valueDate):
         calendar = row["Calendar"]
@@ -20,5 +24,5 @@ class DepositRate(Rate):
         rate = row["Value"]
         paymentFrequency = row["PaymentFrequency"]
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, dateAdjuster)
+                   yearBasis, rate, paymentFrequency, calendar)
 

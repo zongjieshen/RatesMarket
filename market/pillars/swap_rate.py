@@ -3,13 +3,16 @@ from market.pillars import *
 #SwapRate
 class SwapRate(Rate):
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,dateAdjuster,compoundFrequency,paymentDelay):
+                   yearBasis, rate, paymentFrequency,calendar,compoundFrequency,paymentDelay):
         super(SwapRate, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,dateAdjuster)
+                   yearBasis, rate, paymentFrequency,calendar)
         self.compoundFrequency = compoundFrequency
         self.paymentDelay = paymentDelay
         self.quoteType = 'SwapRate'
 
+    def __repr__(self):
+        return (f"SwapRate('{self.startDate.strftime('%Y-%m-%d')}', '{self.maturityDate.strftime('%Y-%m-%d')}', '{self.ccy}', '{self.label}', "
+                f"'{self.rateConvention}', '{self.yearBasis}', {self.rate}, '{self.paymentFrequency}', '{self.calendar}', '{self.compoundFrequency}', '{self.paymentDelay}')")
     @classmethod
     def fromRow(cls, row, valueDate):
         calendar = row["Calendar"]
@@ -25,7 +28,7 @@ class SwapRate(Rate):
         compoundFrequency = row['CompoundingFrequency']
         paymentDelay = row["PaymentDelay"]
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,dateAdjuster,compoundFrequency,paymentDelay)
+                   yearBasis, rate, paymentFrequency,calendar,compoundFrequency,paymentDelay)
 
 class BasisSwapRate(SwapRate):
     def __init__(self, *args, **kwargs):

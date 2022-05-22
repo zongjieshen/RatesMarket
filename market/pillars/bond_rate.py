@@ -10,9 +10,9 @@ class BondQuote(Rate):
 
 class BondYield(BondQuote):
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency,dateAdjuster, coupon, bondType, notionalIndexation):
+                   yearBasis, rate, paymentFrequency,calendar, coupon, bondType, notionalIndexation):
         super(BondYield, self).__init__(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, dateAdjuster)
+                   yearBasis, rate, paymentFrequency, calendar)
         self.quoteType='BondYield'
         self.coupon = coupon
         self.bondType = bondType
@@ -34,4 +34,4 @@ class BondYield(BondQuote):
         notionalIndexation = row['NotionalIndexation'] if 'NotionalIndexation' in row else ''
 
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, dateAdjuster,coupon, bondType, notionalIndexation)
+                   yearBasis, rate, paymentFrequency, calendar, coupon, bondType, notionalIndexation)

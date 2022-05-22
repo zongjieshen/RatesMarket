@@ -19,5 +19,5 @@ class Spread(Rate):
         rate = row["Value"]
         paymentFrequency = row["PaymentFrequency"]
         return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, dateAdjuster)
+                   yearBasis, rate, paymentFrequency, calendar)
 

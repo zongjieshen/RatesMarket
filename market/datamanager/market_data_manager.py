@@ -6,7 +6,7 @@ from market.util import Constants
 
 
 
-class marketDataManager():
+class MarketDataManager():
     def basemarket():
         bondfilters = "ValueType == 'BondYield' and Currency == 'AUD'"
         audswapFilters = "(ValueType == 'DepositRate' and Label.str.contains ('AUDBILL').values) or (ValueType == 'SwapRate' and Label.str.contains ('AUDSwap').values)"

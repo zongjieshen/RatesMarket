@@ -9,7 +9,7 @@
 ## Installing the Package
 The package is not on pip at the moment, user need to clone the repo and install locally
 ```python
-pip install -e C:\Users\Zongjie\source\repos\zongjieshen\RatesMarket\PythonMarketAnalytics
+pip install -e C:\Users\Zongjie\source\repos\zongjieshen\RatesMarket
 ```
 **_NOTE:_** Replace the repo directory with your own
 
@@ -20,7 +20,7 @@ pip install -e C:\Users\Zongjie\source\repos\zongjieshen\RatesMarket\PythonMarke
 After installing the package, you can import the package as a standard one
 ##### Notebook
 ```python
-Import market as mkt
+import market as mkt
 import pandas as pd
 valueDate = pd.to_datetime('31/12/2021',format = '%d/%m/%Y')
 baseMarket = mkt.Create('baseMarket',valueDate)
@@ -30,7 +30,7 @@ baseMarket.GetItems()
 ![](2022-05-16-13-31-51.png)
 
 #### Excel
-
+**Note:** Excel workbook name has to be named as 'MarketAddin.xlsm' to work, as xlwings requires the addin module and workbook name to be the same.
 In Excel after the xlwings Ribbon is loaded, click Import functions and type the formula
 ```
 =MarketCreate("baseMarket",valueDate,,buildItems)

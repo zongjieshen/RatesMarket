@@ -1,6 +1,8 @@
+from distutils.command.build import build
 import pandas as pd
-from market.datamanager import *
+import market.datamanager as dm
 from market.curves import *
+from market.datamanager.market_data_manager import ItemToBuild
 from market.indexfixing import *
 from market.factory import *
 from market.dates import *
@@ -69,6 +71,7 @@ class Market():
     
 
     def _build(self):
+        '''Internal market function to boostrap all the items within the market'''
         #Check if all dependencies exist before passing into the recursive sorting function
         for item in self.marketItems.values():
             if next((x for x in self.marketItems.values() if x.key == item.discountCurve), None) is None:
@@ -158,9 +161,13 @@ def Create(handleName, valueDate, filePath = None, buildItems = None):
     ccDf = pd.read_excel(filePath,sheet_name='CreditCurve')
     market = Market(handleName, valueDate)
     if buildItems is None:
-        market._itemsToBuild = marketDataManager.basemarket()
+        market._itemsToBuild = dm.MarketDataManager.basemarket()
+    elif isinstance(buildItems, list):
+        market._itemsToBuild = buildItems
+    elif isinstance(buildItems, pd.DataFrame):
+        market._itemsToBuild = dm.MarketDataManager.FromExcelArray(buildItems)
     else:
-        market._itemsToBuild = marketDataManager.FromExcelArray(buildItems)
+        raise TypeError(f'{type(buildItems)} is not currently supported')
 
     for item in market._itemsToBuild:
         itemType = item.itemType

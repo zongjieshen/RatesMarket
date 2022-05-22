@@ -7,4 +7,3 @@ from market.indexfixing import *
 from market.datamanager import *
 from market.util import *
 __all__ = ['pillars','Curves','dates','market','instruments','indexfixing','datamanager','util']
-

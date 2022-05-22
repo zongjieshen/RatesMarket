@@ -107,7 +107,7 @@ class ScheduleDefinition():
             months = 30 * (maturity.month - startDate.month - 1)
             years = 360 * (maturity.year - startDate.year)
             accrual_period = (years + months + start + end) / 360
-        elif basis.lower() == 'equalcoupons':
+        elif basis.lower() == 'equalcoupons': 
             accrual_period = maturity.year - startDate.year + (maturity.month - startDate.month)/12
         elif basis.lower() == 'actonact':
             accrual_period = (maturity - startDate).days / (365 + calendar.isleap(startDate.year))
