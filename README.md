@@ -47,6 +47,15 @@ More useages are defined in the wiki section
 
 ## Detailed Functionality
 
+Currently Supported Curve Type
+| Curve Type                    |
+|-------------------------------|
+| Yield Curve                   |
+| SpreadYield Curve             |
+| Credit Curve                  |
+| Inflation Curve               |
+| Price Curve                   |
+
 * [Chart Function](https://github.com/zongjieshen/RatesMarket/wiki/Chart-Functions)
 * [Risk and Info Function](https://github.com/zongjieshen/RatesMarket/wiki/Other-Functions)
 
