@@ -63,6 +63,14 @@ class Curve():
             return maturities, discount_factors
 
     def _addinstruments(self, market):
+        """Add instruments for bootstrapping
+
+        Args:
+            market (_type_): _description_
+
+        Yields:
+            _type_: returns a generator of instruments for performance
+        """        
         for pillar in self.pillars:
             if pillar.quoteType == 'BondYield' and pillar.bondType.lower() == 'fixed':
                 yield (Bond(pillar, self, market))
@@ -84,7 +92,7 @@ class Curve():
             return f'Curve {self.key} has no pillars'
         pillars = [pd.DataFrame([pillar.__dict__]) for pillar in self.pillars]
         dt = pd.concat(pillars)
-        dt.rename(columns = {'dateAdjuster':'calendar'}, inplace = True)
+        dt = dt.drop(columns = ['dateAdjuster'])
         dt['startDate'] = dt['startDate'].dt.strftime('%d/%m/%Y')
         dt['maturityDate'] = dt['maturityDate'].dt.strftime('%d/%m/%Y')
         dt.columns = dt.columns.str.strip('_').str.capitalize()
