@@ -8,7 +8,7 @@ class Rate():
     rateConvention = OneOf(Constants.RateConvention)
 
     def __init__(self, startDate, maturityDate, ccy, label, rateConvention, 
-                 yearBasis, rate, paymentFrequency, calendar, adjustment = 'modified following'):
+                 yearBasis, rate, paymentFrequency, calendar, adjustment = 'modified following', **kwargs):
         self.startDate = startDate if isinstance(startDate, datetime.datetime) is True else ScheduleDefinition.DateConvert(startDate)
         self.maturityDate = maturityDate if isinstance(maturityDate, datetime.datetime) is True else ScheduleDefinition.DateConvert(maturityDate)
         self.ccy = ccy

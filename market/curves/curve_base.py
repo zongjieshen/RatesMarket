@@ -1,5 +1,5 @@
 from market.dates import *
-from market.instruments import Bond, IndexedBond, CreditDefaultSwap, Deposit, Instrument, Swap, DiscountFactor, BasisSwap
+from market.instruments import Bond, IndexedBond, CreditDefaultSwap, Deposit, Instrument, Swap, DiscountFactor, BasisSwap, XccyBasisSwap
 from market.util import Constants, OneOf
 from market.pillars import RateConvention
 import pandas as pd
@@ -86,6 +86,9 @@ class Curve():
                 yield (BasisSwap(pillar, self, market))
             elif pillar.quoteType == 'CreditDefaultSwapRate':
                 yield (CreditDefaultSwap(pillar, self, market))
+            elif pillar.quoteType == 'XccyBasisSwapRate':
+                yield (XccyBasisSwap(pillar, self, market))
+                
 
     def ItemInfo(self):
         if hasattr(self, 'pillars') is False:

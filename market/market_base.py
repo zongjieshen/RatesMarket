@@ -81,22 +81,22 @@ class Market():
 
         #market._worker(marketList, {},self)
 
-        tic = time.time()
-        with Manager() as manager:
-            dic = manager.dict()
-
-            p = Process(target=Market._worker, args=(marketList,dic, self))
-            p.start()
-            p.join()
-
-            self.marketItems = dict(dic)
-        toc = time.time()
-        print('Done in {:.4f} seconds'.format(toc-tic))
-
         #tic = time.time()
-        #Market._worker(marketList, {},self)
+        #with Manager() as manager:
+        #    dic = manager.dict()
+
+        #    p = Process(target=Market._worker, args=(marketList,dic, self))
+        #    p.start()
+        #    p.join()
+
+        #    self.marketItems = dict(dic)
         #toc = time.time()
         #print('Done in {:.4f} seconds'.format(toc-tic))
+
+        tic = time.time()
+        Market._worker(marketList, {},self)
+        toc = time.time()
+        print('Done in {:.4f} seconds'.format(toc-tic))
 
     def GetItems(self):
         if len(self.marketItems)  < 1:

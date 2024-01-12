@@ -30,8 +30,11 @@ class YieldCurveFactory:
                 elif pillarType == 'SwapRate':
                     pillar = SwapRate.fromRow(row, valueDate)
                     pillars.append(pillar)
-                elif pillarType == 'BasisSwap':
+                elif pillarType == 'BasisSwap' and row['Currency'] == row['Currency2']:
                     pillar = BasisSwapRate.fromRow(row, valueDate)
+                    pillars.append(pillar)
+                elif pillarType == 'BasisSwap' and row['Currency'] != row['Currency2']:
+                    pillar = XccyBasisSwapRate.fromRow(row, valueDate)
                     pillars.append(pillar)
                 elif pillarType == 'BondYield':
                     pillar = BondYield.fromRow(row, 'Fixed', valueDate)
@@ -48,6 +51,8 @@ class YieldCurveFactory:
         except Exception as exp:
             raise Exception(exp)
 
+        if 'forccy' and 'collccy' in params:
+            return XccyBasisCurve(key,valueDate,ccy,pillars,**params)
         return YieldCurve(key,valueDate,ccy,pillars,**params)
 
 

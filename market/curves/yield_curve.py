@@ -246,3 +246,14 @@ class SpreadYieldCurve(YieldCurve):
         super(SpreadYieldCurve, self).Build()
 
         self._built = True
+
+class XccyBasisCurve(YieldCurve):
+    '''Extension of the YieldCurve class'''
+
+    def __init__(self, *args, **kwargs):
+        # Initialise the base Curve class to get initial df, but don't initialise YieldCurve as we dont have pillars yet
+        super(XccyBasisCurve, self).__init__(*args, **kwargs)
+        self.ccy2 = kwargs.get('ccy2', None)
+        self.collDiscount = kwargs.get('colldiscount', None)
+        self.collProject = kwargs.get('collproject', None)
+        self.forProject = kwargs.get('forproject', None)

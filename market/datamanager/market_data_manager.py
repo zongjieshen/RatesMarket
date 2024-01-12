@@ -21,6 +21,9 @@ class MarketDataManager():
         iaaSpreadFilter = "Label == 'RBABondA'"
         usdCreditCurveFilter = "ValueType == 'CreditDefaultSwap' and Currency == 'USD'"
 
+        #xccy basis items
+        audUsdSwapFilters = "ValueType == 'BasisSwap' and Label.str.startswith('AUDUSDBasis').values"
+
         #Params
         audSwapDiscount = XString("discountCurve=AUDSwap")
         aud3mDiscount = XString("discountCurve=AUDSwap3m")
@@ -28,6 +31,7 @@ class MarketDataManager():
         iaaCurveParams = XString("spreadCurve=IaaSpread;periods=3m;yearBasis=acton365f;discountCurve=AUDBondGov")
         beiCurveParams = XString("discountCurve=AUDBondGov;IndexFixing=AUCPI")
         usdCreditCurveParams = XString("discountCurve=USDOIS")
+        audUsdCurveParams = XString("forCcy=AUD;collCcy=USD;collDiscount=USDOIS;collProject=USDOIS;forProject=AUDSwap3m")
 
         bondCurveItem = ItemToBuild(True,'yieldCurve','AUDBondGov',bondfilters,'AUD')
         audSwapItem = ItemToBuild(True,'yieldCurve','AUDSwap',audswapFilters,'AUD')
@@ -44,9 +48,11 @@ class MarketDataManager():
         iaaSpread = ItemToBuild(True,'PriceCurve','IaaSpread',iaaSpreadFilter,'AUD',iaaSpreadParams._toDictionary('=',';'))
         iaaCurve = ItemToBuild(True,'SpreadYieldCurve','IaaCurve', '','AUD', iaaCurveParams._toDictionary('=',';'))
 
-        itemsToBuild = [audSwap3mItem,audSwap6mItem,audSwap1mItem,iaaCurve,audSwapItem,gbpOisItem,jpyOisItem,usdOisItem,bondCurveItem,auCPI,usdCreditCurveItem,beiCurve,iaaSpread]
+        audUsdCurve = ItemToBuild(True, 'yieldCurve','AudUsdXccy', audUsdSwapFilters, 'AUD', audUsdCurveParams._toDictionary('=',';'))
+
+        #itemsToBuild = [audSwap3mItem,audSwap6mItem,audSwap1mItem,iaaCurve,audSwapItem,gbpOisItem,jpyOisItem,usdOisItem,bondCurveItem,auCPI,usdCreditCurveItem,beiCurve,iaaSpread]
         
-        #itemsToBuild = [bondCurveItem,auCPI,beiCurve]
+        itemsToBuild = [audSwap3mItem, audSwapItem, usdOisItem, audUsdCurve]
         return itemsToBuild
 
     def FromExcelArray(dt):

@@ -23,6 +23,6 @@ class DepositRate(Rate):
         yearBasis = row["YearBasis"]
         rate = row["Value"]
         paymentFrequency = row["PaymentFrequency"]
-        return cls(startDate, maturityDate, ccy, label, rateConvention, 
-                   yearBasis, rate, paymentFrequency, calendar)
+        return cls(startDate=startDate, maturityDate=maturityDate, ccy=ccy, label=label, rateConvention=rateConvention, 
+                   yearBasis=yearBasis, rate=rate, paymentFrequency=paymentFrequency, calendar=calendar, test = 'test')
 

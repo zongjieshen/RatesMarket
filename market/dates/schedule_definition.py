@@ -47,7 +47,7 @@ class ScheduleDefinition():
     @staticmethod
     def EndOfMonthAdj(dates, lag):
         def _endOfMonthAdj(date, lag):
-            date = date + pd.offsets.QuarterEnd(0) + pd.offsets.DateOffset(months = lag)
+            date = ScheduleDefinition.DateConvert(date) + pd.offsets.QuarterEnd(0) + pd.offsets.DateOffset(months = lag)
             return date + pd.offsets.QuarterEnd(0)
 
         if isinstance(dates,(list,np.ndarray)):
