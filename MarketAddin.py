@@ -8,8 +8,10 @@ if __name__ == '__main__':
     valueDate = pd.to_datetime('31/12/2021')
     baseMarket = mkt.Create('basemarket',valueDate)
     date_list = [valueDate + dateutil.relativedelta.relativedelta(months=3*x) for x in range(100)] 
+    
+    audSwap = baseMarket['AUDSwap3m']
+    #audusd = baseMarket['AudUsdXccy']
     #df = mkt.Charts(list(baseMarket.marketItems.values()), 'zero', date_list,'3m')
-    audSwap = baseMarket['AUDSwap']
     fwdShockedCurve = audSwap.CreateShockedCurve('zero',shockAmount = 0.0001, period = '3m', yearBasis = 'acton365f')
     xw.serve()
 

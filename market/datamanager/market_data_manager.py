@@ -50,9 +50,9 @@ class MarketDataManager():
 
         audUsdCurve = ItemToBuild(True, 'yieldCurve','AudUsdXccy', audUsdSwapFilters, 'AUD', audUsdCurveParams._toDictionary('=',';'))
 
-        #itemsToBuild = [audSwap3mItem,audSwap6mItem,audSwap1mItem,iaaCurve,audSwapItem,gbpOisItem,jpyOisItem,usdOisItem,bondCurveItem,auCPI,usdCreditCurveItem,beiCurve,iaaSpread]
+        itemsToBuild = [audUsdCurve,audSwap3mItem,audSwap6mItem,audSwap1mItem,iaaCurve,audSwapItem,gbpOisItem,jpyOisItem,usdOisItem,bondCurveItem,auCPI,usdCreditCurveItem,beiCurve,iaaSpread]
         
-        itemsToBuild = [audSwap3mItem, audSwapItem, usdOisItem, audUsdCurve]
+        #itemsToBuild = [audSwap3mItem, audSwapItem, usdOisItem, audUsdCurve]
         return itemsToBuild
 
     def FromExcelArray(dt):

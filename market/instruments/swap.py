@@ -82,8 +82,8 @@ class XccyBasisSwap(Swap):
 
 
     def SolveDf(self):
-        discountCurve = self.market[self.curve.discountCurve]
-        guess = np.log(discountCurve.DiscountFactor(self.maturity))
+        guessCurve = self.forProject
+        guess = np.log(guessCurve.DiscountFactor(self.maturity))
         return scipy.optimize.newton(self._objectiveFunction, guess)
 
     def _objectiveFunction(self,guess):

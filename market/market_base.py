@@ -1,12 +1,12 @@
 from distutils.command.build import build
 import pandas as pd
 import market.datamanager as dm
+import multiprocessing
 from market.curves import *
 from market.datamanager.market_data_manager import ItemToBuild
 from market.indexfixing import *
 from market.factory import *
 from market.dates import *
-from multiprocessing import Process, Manager
 from pathlib import Path
 import time
 
@@ -14,8 +14,8 @@ class Market():
     def __init__(self, handleName, valueDate):
         self.handleName = handleName
         self.valueDate = ScheduleDefinition.DateConvert(valueDate)
-        
-        self.marketItems = {}
+        #Use concurrent dictionary
+        self.marketItems = multiprocessing.Manager().dict()
 
     def __getitem__(self, key):
         if isinstance(key, str):
@@ -46,57 +46,66 @@ class Market():
         else:
             raise TypeError(f'type of {marketItem} is incorrect')
 
-
-    def _worker(itemList,dic, market):
+    def _worker(item, market):
         '''Internal worker function for multi-processing'''
-        def _checkDep(item, dic, dependencies = ['discountCurve','spreadCurve']):
-            flags = [False] * len(dependencies)
-            for idx, dep in enumerate(dependencies):
-                dependencyValue = getattr(item, dep, item.key)
-                if dependencyValue == item.key:
-                    flags[idx] = True
-                elif dependencyValue != item.key and dependencyValue.lower() in dic and dic[dependencyValue.lower()]._built:
-                    flags[idx] = True
-            return all(flag is True for flag in flags)
-
-        while len(itemList) != 0:
-            item = itemList.pop(0)
-            if item.key not in dic and _checkDep(item, market.marketItems) is True:
-                item.Build(market)
-                print(f'{item.key} build status is {item._built}')
-                dic[item.key.lower()] = item
-                market + item
-            else:
-                itemList.append(item)
-    
+        item.Build(market)
+        print(f'{item.key} build status is {item._built}')
+        market + item
+        
 
     def _build(self):
         '''Internal market function to boostrap all the items within the market'''
         #Check if all dependencies exist before passing into the recursive sorting function
+        def _indexItem(item, multiList):
+            findIndex = -1
+            for i, sublist in enumerate(multiList):
+                if any(obj.key == item.key for obj in sublist):
+                    #index = sublist.index(item)
+                    findIndex = i
+            return findIndex
+
         for item in self.marketItems.values():
             if next((x for x in self.marketItems.values() if x.key == item.discountCurve), None) is None:
                 raise Exception(f'{item.discountCurve} curve doesnt exist in the market list')
 
-        marketList = list(self.marketItems.values())
+        itemList = list(self.marketItems.values())
 
-        #market._worker(marketList, {},self)
+        #Create multiple lists for multi-processing, put same level of dependency of items in the same list 
+        multiList =[[]]
+        dependencies = ['discountCurve','spreadCurve','forProject']
+        flags = [0] * len(dependencies)
+        while len(itemList) != 0:
+            item = itemList.pop(0)
+            for idx, dep in enumerate(dependencies):
+                dependencyValue = getattr(item, dep, item.key)
+                if dependencyValue == item.key:
+                    flags[idx] = -2
+                elif dependencyValue != item.key:
+                    flags[idx] = _indexItem(next((x for x in self.marketItems.values() if x.key == dependencyValue), None), multiList)
+            maxIndex = max(flags)
+            if all(flag == -2 for flag in flags):
+                multiList[0].append(item)
+            elif maxIndex > -1:
+                if maxIndex + 1 < len(multiList):
+                    multiList[maxIndex+1].append(item)
+                else:
+                    multiList.append([item])
+            else:
+                itemList.append(item)
 
-        #tic = time.time()
-        #with Manager() as manager:
-        #    dic = manager.dict()
-
-        #    p = Process(target=Market._worker, args=(marketList,dic, self))
-        #    p.start()
-        #    p.join()
-
-        #    self.marketItems = dict(dic)
-        #toc = time.time()
-        #print('Done in {:.4f} seconds'.format(toc-tic))
-
+        multiProcess = True
         tic = time.time()
-        Market._worker(marketList, {},self)
+        for singleList in multiList:
+            if (multiProcess):
+                arguments_list = [(item, self) for item in singleList]
+                with multiprocessing.Pool(processes=4) as pool:
+                    pool.starmap(Market._worker, arguments_list)
+            else:
+                for item in singleList:
+                    Market._worker(item, self)
         toc = time.time()
         print('Done in {:.4f} seconds'.format(toc-tic))
+        
 
     def GetItems(self):
         if len(self.marketItems)  < 1:
