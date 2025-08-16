@@ -5,6 +5,8 @@
 * The package uses Scipy for Newton-Raphson optimization.
 * A multiprocessing framework is also embedded to speed up the market building process
 * It also provides the flexiblity for users to choose which instruments to use in the curve building process
+* Added G2++ model for calibrating volatility surface with swaptions
+
 
 ## Installing the Package
 The package is not on pip at the moment, user need to clone the repo and install locally

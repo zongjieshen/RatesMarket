@@ -54,55 +54,100 @@ class Market():
         
 
     def _build(self):
-        '''Internal market function to boostrap all the items within the market'''
-        #Check if all dependencies exist before passing into the recursive sorting function
-        def _indexItem(item, multiList):
-            findIndex = -1
-            for i, sublist in enumerate(multiList):
-                if any(obj.key == item.key for obj in sublist):
-                    #index = sublist.index(item)
-                    findIndex = i
-            return findIndex
-
+        '''Internal market function to bootstrap all the items within the market using topological sorting'''
+        # Check if all dependencies exist before sorting
         for item in self.marketItems.values():
             if next((x for x in self.marketItems.values() if x.key == item.discountCurve), None) is None:
                 raise Exception(f'{item.discountCurve} curve doesnt exist in the market list')
 
-        itemList = list(self.marketItems.values())
-
-        #Create multiple lists for multi-processing, put same level of dependency of items in the same list 
-        multiList =[[]]
-        dependencies = ['discountCurve','spreadCurve','forProject']
-        flags = [0] * len(dependencies)
-        while len(itemList) != 0:
-            item = itemList.pop(0)
-            for idx, dep in enumerate(dependencies):
+        # Build dependency graph
+        graph = {}
+        dependencies = ['discountCurve', 'spreadCurve', 'forProject']
+        
+        # Initialize graph with all items
+        for item in self.marketItems.values():
+            graph[item.key] = []
+        
+        # Add dependencies to graph
+        for item in self.marketItems.values():
+            for dep in dependencies:
                 dependencyValue = getattr(item, dep, item.key)
-                if dependencyValue == item.key:
-                    flags[idx] = -2
-                elif dependencyValue != item.key:
-                    flags[idx] = _indexItem(next((x for x in self.marketItems.values() if x.key == dependencyValue), None), multiList)
-            maxIndex = max(flags)
-            if all(flag == -2 for flag in flags):
-                multiList[0].append(item)
-            elif maxIndex > -1:
-                if maxIndex + 1 < len(multiList):
-                    multiList[maxIndex+1].append(item)
-                else:
-                    multiList.append([item])
-            else:
-                itemList.append(item)
-
+                if dependencyValue != item.key:
+                    graph[item.key].append(dependencyValue)
+        
+        # Topological sort
+        def topological_sort(graph):
+            # Track visited nodes and result
+            visited = set()
+            temp_visited = set()
+            result = []
+            
+            def visit(node):
+                # If node is in temp_visited, we have a cycle
+                if node in temp_visited:
+                    raise Exception(f'Cyclic dependency detected involving {node}')
+                
+                # If node is already visited, skip
+                if node in visited:
+                    return
+                
+                # Mark node as temporarily visited
+                temp_visited.add(node)
+                
+                # Visit all dependencies
+                for dep in graph.get(node, []):
+                    visit(dep)
+                
+                # Mark node as visited and add to result
+                temp_visited.remove(node)
+                visited.add(node)
+                result.append(node)
+            
+            # Visit all nodes
+            for node in graph:
+                if node not in visited:
+                    visit(node)
+            
+            return result
+        
+        # Get sorted keys
+        sorted_keys = topological_sort(graph)
+        
+        # Group items by level for parallel processing
+        levels = []
+        key_to_level = {}
+        
+        # Assign level to each item
+        for key in sorted_keys:
+            max_dep_level = -1
+            for dep in graph[key]:
+                if dep in key_to_level:
+                    max_dep_level = max(max_dep_level, key_to_level[dep])
+            
+            level = max_dep_level + 1
+            key_to_level[key] = level
+            
+            # Ensure levels list has enough elements
+            while len(levels) <= level:
+                levels.append([])
+            
+            # Add item to its level
+            item = next(x for x in self.marketItems.values() if x.key == key)
+            levels[level].append(item)
+        
+        # Process each level in parallel
         multiProcess = True
         tic = time.time()
-        for singleList in multiList:
-            if (multiProcess):
-                arguments_list = [(item, self) for item in singleList]
+        
+        for level_items in levels:
+            if multiProcess:
+                arguments_list = [(item, self) for item in level_items]
                 with multiprocessing.Pool(processes=4) as pool:
                     pool.starmap(Market._worker, arguments_list)
             else:
-                for item in singleList:
+                for item in level_items:
                     Market._worker(item, self)
+        
         toc = time.time()
         print('Done in {:.4f} seconds'.format(toc-tic))
         
